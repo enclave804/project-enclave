@@ -431,6 +431,111 @@ class BaseAgent(ABC):
         return result
 
     # ------------------------------------------------------------------
+    # RLHF Data Collection (God Mode Lite)
+    # ------------------------------------------------------------------
+
+    def learn(
+        self,
+        task_input: dict[str, Any],
+        model_output: str,
+        human_correction: Optional[str] = None,
+        score: Optional[int] = None,
+        source: str = "manual_review",
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> Optional[dict]:
+        """
+        Save a training example to the RLHF database.
+
+        The Data Flywheel: every time a human corrects an agent's output,
+        we save the (bad_draft, good_rewrite) pair. Over time this builds
+        a fine-tuning dataset for prompt optimization or model training.
+
+        This method is best-effort — it NEVER crashes the agent if the
+        database write fails. Learning failures are logged but swallowed.
+
+        Args:
+            task_input: The context/prompt that produced the output.
+            model_output: What the agent generated (the "candidate").
+            human_correction: What the human rewrote (the "gold"). None
+                if the human only scored but didn't rewrite.
+            score: Quality score 0-100. None if not rated.
+            source: How this example was collected:
+                'manual_review', 'shadow_comparison', 'a_b_test', 'automated_eval'
+            metadata: Optional metadata for filtering (e.g., lead industry).
+
+        Returns:
+            Stored training example record, or None on failure.
+        """
+        try:
+            result = self.db.store_training_example(
+                agent_id=self.agent_id,
+                vertical_id=self.vertical_id,
+                task_input=task_input,
+                model_output=model_output,
+                human_correction=human_correction,
+                score=score,
+                source=source,
+                metadata=metadata or {},
+            )
+            logger.info(
+                "rlhf_data_captured",
+                extra={
+                    "agent_id": self.agent_id,
+                    "score": score,
+                    "has_correction": human_correction is not None,
+                    "source": source,
+                },
+            )
+            return result
+        except Exception as e:
+            # Never crash the agent because learning failed
+            logger.warning(
+                "rlhf_learning_failed",
+                extra={
+                    "agent_id": self.agent_id,
+                    "error": str(e)[:200],
+                },
+            )
+            return None
+
+    def get_training_examples(
+        self,
+        min_score: Optional[int] = None,
+        source: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        """
+        Retrieve training examples for this agent.
+
+        Used for few-shot prompt construction or training data export.
+
+        Args:
+            min_score: Only examples with score >= this value.
+            source: Filter by collection source.
+            limit: Max examples to return.
+
+        Returns:
+            List of training example records.
+        """
+        try:
+            return self.db.get_training_examples(
+                agent_id=self.agent_id,
+                vertical_id=self.vertical_id,
+                min_score=min_score,
+                source=source,
+                limit=limit,
+            )
+        except Exception as e:
+            logger.warning(
+                "rlhf_retrieval_failed",
+                extra={
+                    "agent_id": self.agent_id,
+                    "error": str(e)[:200],
+                },
+            )
+            return []
+
+    # ------------------------------------------------------------------
     # Knowledge Writing (with confidence gating)
     # ------------------------------------------------------------------
 

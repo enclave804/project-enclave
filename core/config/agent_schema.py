@@ -227,6 +227,24 @@ class AgentInstanceConfig(BaseModel):
         description="Minimum confidence score to write insights to shared memory",
     )
 
+    # --- Shadow Mode (God Mode Lite) ---
+    shadow_mode: bool = Field(
+        False,
+        description=(
+            "When True, this agent runs in parallel with its champion "
+            "but NEVER triggers external effects (emails, APIs). "
+            "Used for safe A/B testing of new strategies on real data."
+        ),
+    )
+    shadow_of: Optional[str] = Field(
+        None,
+        description=(
+            "The agent_id of the 'champion' agent this shadow copies. "
+            "When the champion gets a task, the shadow gets a duplicate. "
+            "Only used when shadow_mode=True."
+        ),
+    )
+
     # Agent-specific params (passed through to implementation)
     params: dict[str, Any] = Field(default_factory=dict)
 

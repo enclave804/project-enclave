@@ -842,3 +842,119 @@ class EnclaveDB:
         if status:
             query = query.eq("status", status)
         return query.execute().data
+
+    # ------------------------------------------------------------------
+    # Training Examples (RLHF Data Flywheel)
+    # ------------------------------------------------------------------
+
+    def store_training_example(
+        self,
+        agent_id: str,
+        vertical_id: str,
+        task_input: dict[str, Any],
+        model_output: str,
+        human_correction: Optional[str] = None,
+        score: Optional[int] = None,
+        source: str = "manual_review",
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> dict:
+        """
+        Save a training example for RLHF data collection.
+
+        Every human correction becomes a (bad, good) pair that can be
+        used for few-shot prompting, fine-tuning, or DSPy optimization.
+        """
+        data: dict[str, Any] = {
+            "agent_id": agent_id,
+            "vertical_id": vertical_id or self.vertical_id,
+            "task_input": task_input,
+            "model_output": model_output,
+            "source": source,
+            "metadata": metadata or {},
+        }
+        if human_correction is not None:
+            data["human_correction"] = human_correction
+        if score is not None:
+            data["score"] = score
+
+        result = (
+            self.client.table("training_examples")
+            .insert(data)
+            .execute()
+        )
+        return result.data[0] if result.data else {}
+
+    def get_training_examples(
+        self,
+        agent_id: Optional[str] = None,
+        vertical_id: Optional[str] = None,
+        min_score: Optional[int] = None,
+        source: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict]:
+        """
+        Retrieve training examples for export or few-shot construction.
+
+        Uses the get_training_examples RPC for efficient filtered retrieval.
+        """
+        params: dict[str, Any] = {
+            "p_limit": limit,
+        }
+        if agent_id:
+            params["p_agent_id"] = agent_id
+        if vertical_id:
+            params["p_vertical_id"] = vertical_id
+        elif self.vertical_id:
+            params["p_vertical_id"] = self.vertical_id
+        if min_score is not None:
+            params["p_min_score"] = min_score
+        if source:
+            params["p_source"] = source
+
+        result = self.client.rpc(
+            "get_training_examples", params
+        ).execute()
+        return result.data
+
+    def get_training_stats(
+        self,
+        vertical_id: Optional[str] = None,
+    ) -> list[dict]:
+        """Get training example statistics grouped by agent."""
+        params: dict[str, Any] = {}
+        if vertical_id:
+            params["p_vertical_id"] = vertical_id
+        elif self.vertical_id:
+            params["p_vertical_id"] = self.vertical_id
+
+        result = self.client.rpc(
+            "get_training_stats", params
+        ).execute()
+        return result.data
+
+    # ------------------------------------------------------------------
+    # Shadow Agents
+    # ------------------------------------------------------------------
+
+    def get_shadow_agents(
+        self,
+        champion_agent_id: str,
+        vertical_id: Optional[str] = None,
+    ) -> list[dict]:
+        """
+        Get enabled shadow agents for a champion.
+
+        Returns agents where shadow_of=champion_agent_id,
+        shadow_mode=True, and enabled=True.
+        """
+        query = (
+            self.client.table("agents")
+            .select("*")
+            .eq("shadow_of", champion_agent_id)
+            .eq("shadow_mode", True)
+            .eq("enabled", True)
+        )
+        vid = vertical_id or self.vertical_id
+        if vid:
+            query = query.eq("vertical_id", vid)
+        return query.execute().data
