@@ -1,7 +1,7 @@
 """
 FastMCP server for the Sovereign Venture Engine.
 
-Exposes Apollo, Supabase/RAG, and Email tools to agents via the
+Exposes Apollo, Supabase/RAG, Email, and Calendar tools to agents via the
 Model Context Protocol (MCP). Each tool is a thin wrapper around
 the existing integration clients.
 
@@ -11,12 +11,16 @@ Entry points:
 
 Architecture:
     FastMCP server
-    +-- search_leads()       -> ApolloClient.search_people()
-    +-- enrich_company()     -> ApolloClient.enrich_company()
-    +-- search_knowledge()   -> EnclaveDB.search_knowledge() via embedder
-    +-- save_insight()       -> EnclaveDB.store_insight()
-    +-- query_companies()    -> EnclaveDB.list_companies()
-    +-- send_email()         -> EmailEngine.send_email() [@sandboxed_tool]
+    +-- search_leads()                -> ApolloClient.search_people()
+    +-- enrich_company()              -> ApolloClient.enrich_company()
+    +-- search_knowledge()            -> EnclaveDB.search_knowledge() via embedder
+    +-- save_insight()                -> EnclaveDB.store_insight()
+    +-- query_companies()             -> EnclaveDB.list_companies()
+    +-- send_email()                  -> EmailEngine.send_email() [@sandboxed_tool]
+    +-- check_calendar_availability() -> CalendarClient.check_availability()
+    +-- get_available_slots()         -> CalendarClient.get_available_slots()
+    +-- book_meeting_slot()           -> CalendarClient.book_meeting() [@sandboxed_tool]
+    +-- get_booking_link()            -> CalendarClient.get_booking_link()
 """
 
 from __future__ import annotations
@@ -75,12 +79,25 @@ def create_mcp_server(
 
     mcp.add_tool(Tool.from_function(send_email))
 
+    # ─── Calendar Tools (book_meeting sandboxed) ──────────────
+    from core.mcp.tools.calendar_tools import (
+        check_calendar_availability,
+        get_available_slots,
+        book_meeting_slot,
+        get_booking_link,
+    )
+
+    mcp.add_tool(Tool.from_function(check_calendar_availability))
+    mcp.add_tool(Tool.from_function(get_available_slots))
+    mcp.add_tool(Tool.from_function(book_meeting_slot))
+    mcp.add_tool(Tool.from_function(get_booking_link))
+
     logger.info(
         "mcp_server_created",
         extra={
             "server_name": name,
             "vertical_id": vertical_id,
-            "tool_count": 6,
+            "tool_count": 10,
         },
     )
 

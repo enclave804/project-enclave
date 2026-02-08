@@ -1,0 +1,79 @@
+# Appointment Setter Agent — Enclave Guard vertical
+#
+# Closes the outreach loop: when a prospect replies to an email,
+# this agent classifies their intent, handles objections with
+# shared brain context, drafts a reply, and books a meeting.
+#
+# This is the Revenue Closer — the final piece of the autonomous
+# sales pipeline. Outreach generates interest, SEO builds authority,
+# the Appointment Setter converts interest into booked meetings.
+#
+# Intent classification:
+#   interested    → propose 3 specific time slots + Calendly fallback
+#   objection     → pull winning rebuttals from shared_insights, address concern
+#   question      → answer from knowledge base, include light CTA
+#   ooo           → schedule follow-up after their return date
+#   wrong_person  → ask for referral to the right contact
+#   unsubscribe   → comply immediately, log suppression
+#   not_interested → polite close, archive lead
+
+agent_id: appointment_setter_v1
+agent_type: appointment_setter
+name: "Appointment Setter Agent"
+description: "Classifies email replies, handles objections, drafts context-aware responses, and books discovery calls."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.4  # Lower temp for precise intent classification
+  max_tokens: 4096
+  context_window: 128000
+
+tools:
+  - check_calendar_availability
+  - get_available_slots
+  - book_meeting_slot
+  - get_booking_link
+  - search_knowledge
+  - send_email
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event  # Triggered by event_bus on email_reply
+  cron: ""
+
+# System prompt for reply handling
+system_prompt_path: "verticals/enclave_guard/prompts/agent_prompts/appointment_system.md"
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  # Soft close: always propose specific times + Calendly fallback
+  default_meeting_duration_minutes: 30
+  max_proposed_times: 3
+  days_ahead_for_slots: 5
+
+  # Follow-up cadence
+  max_follow_ups: 3
+  follow_up_delay_days: 3
+  ooo_buffer_days: 1  # Days after OOO return to follow up
+
+  # Intent thresholds
+  classification_model: "claude-sonnet-4-20250514"
+  min_classification_confidence: 0.7
+
+  # Tone & style
+  tone: "Professional, warm, consultative"
+  company_name: "Enclave Guard"
+  meeting_type: "discovery"
+  value_proposition: "15-minute security posture review"
