@@ -46,6 +46,10 @@ langchain-anthropic>=0.3.0
 
 # Dashboard
 streamlit>=1.35.0
+plotly>=5.18.0
+
+# ChatOps
+python-telegram-bot>=21.0
 
 # Optional: Enrichment
 # shodan>=1.31.0
