@@ -456,3 +456,389 @@ class EnclaveDB:
             .limit(limit)
             .execute()
         ).data
+
+    # ------------------------------------------------------------------
+    # Agent Registry
+    # ------------------------------------------------------------------
+
+    def register_agent(self, data: dict[str, Any]) -> dict:
+        """Register or update an agent in the database."""
+        data["vertical_id"] = self.vertical_id
+        result = (
+            self.client.table("agents")
+            .upsert(data, on_conflict="agent_id,vertical_id")
+            .execute()
+        )
+        return result.data[0] if result.data else {}
+
+    def get_agent_record(self, agent_id: str) -> Optional[dict]:
+        """Get an agent record by its agent_id."""
+        result = (
+            self.client.table("agents")
+            .select("*")
+            .eq("agent_id", agent_id)
+            .eq("vertical_id", self.vertical_id)
+            .limit(1)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    def list_agent_records(self, enabled_only: bool = False) -> list[dict]:
+        """List all agents for this vertical."""
+        query = (
+            self.client.table("agents")
+            .select("*")
+            .eq("vertical_id", self.vertical_id)
+            .order("agent_id")
+        )
+        if enabled_only:
+            query = query.eq("enabled", True)
+        return query.execute().data
+
+    def reset_agent_errors(
+        self, agent_id: str, vertical_id: str
+    ) -> None:
+        """Reset consecutive error counter (called on success)."""
+        self.client.rpc(
+            "reset_agent_errors",
+            {"p_agent_id": agent_id, "p_vertical_id": vertical_id},
+        ).execute()
+
+    def record_agent_error(
+        self,
+        agent_id: str,
+        vertical_id: str,
+        error_message: Optional[str] = None,
+    ) -> dict:
+        """Record an error and check circuit breaker threshold."""
+        result = self.client.rpc(
+            "record_agent_error",
+            {
+                "p_agent_id": agent_id,
+                "p_vertical_id": vertical_id,
+                "p_error_message": error_message,
+            },
+        ).execute()
+        return result.data if result.data else {}
+
+    # ------------------------------------------------------------------
+    # Agent Runs
+    # ------------------------------------------------------------------
+
+    def log_agent_run(
+        self,
+        agent_id: str,
+        agent_type: str,
+        run_id: str,
+        status: str,
+        input_data: Optional[dict] = None,
+        output_data: Optional[dict] = None,
+        error_message: Optional[str] = None,
+        duration_ms: Optional[int] = None,
+        vertical_id: Optional[str] = None,
+    ) -> dict:
+        """Log an agent run to the agent_runs table."""
+        data: dict[str, Any] = {
+            "run_id": run_id,
+            "agent_id": agent_id,
+            "agent_type": agent_type,
+            "status": status,
+            "vertical_id": vertical_id or self.vertical_id,
+        }
+        if input_data is not None:
+            data["input_data"] = input_data
+        if output_data is not None:
+            data["output_data"] = output_data
+        if error_message is not None:
+            data["error_message"] = error_message
+        if duration_ms is not None:
+            data["duration_ms"] = duration_ms
+
+        # Upsert: "started" creates, "completed"/"failed" updates
+        result = (
+            self.client.table("agent_runs")
+            .upsert(data, on_conflict="run_id")
+            .execute()
+        )
+        return result.data[0] if result.data else {}
+
+    def get_agent_runs(
+        self,
+        agent_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Get agent runs with optional filters."""
+        query = (
+            self.client.table("agent_runs")
+            .select("*")
+            .eq("vertical_id", self.vertical_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+        )
+        if agent_id:
+            query = query.eq("agent_id", agent_id)
+        if status:
+            query = query.eq("status", status)
+        return query.execute().data
+
+    def get_agent_stats(
+        self,
+        agent_id: Optional[str] = None,
+        days: int = 30,
+    ) -> list[dict]:
+        """Get agent statistics via RPC."""
+        params: dict[str, Any] = {
+            "p_vertical_id": self.vertical_id,
+            "p_days": days,
+        }
+        if agent_id:
+            params["p_agent_id"] = agent_id
+        result = self.client.rpc("get_agent_stats", params).execute()
+        return result.data
+
+    # ------------------------------------------------------------------
+    # Task Queue
+    # ------------------------------------------------------------------
+
+    def enqueue_task(self, data: dict[str, Any]) -> dict:
+        """Add a task to the queue."""
+        data["vertical_id"] = self.vertical_id
+        result = (
+            self.client.table("task_queue")
+            .insert(data)
+            .execute()
+        )
+        return result.data[0] if result.data else {}
+
+    def claim_next_task(self, agent_id: str) -> Optional[dict]:
+        """Atomically claim the next pending task (via RPC)."""
+        result = self.client.rpc(
+            "claim_next_task",
+            {
+                "p_agent_id": agent_id,
+                "p_vertical_id": self.vertical_id,
+            },
+        ).execute()
+        return result.data if result.data else None
+
+    def complete_task(
+        self,
+        task_id: str,
+        output_data: Optional[dict] = None,
+    ) -> dict:
+        """Mark a task as completed."""
+        updates: dict[str, Any] = {
+            "status": "completed",
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if output_data is not None:
+            updates["output_data"] = output_data
+        result = (
+            self.client.table("task_queue")
+            .update(updates)
+            .eq("task_id", task_id)
+            .execute()
+        )
+        return result.data[0] if result.data else {}
+
+    def fail_task(
+        self,
+        task_id: str,
+        error_message: str,
+        retry: bool = True,
+    ) -> dict:
+        """Mark a task as failed, optionally re-enqueue for retry."""
+        current = (
+            self.client.table("task_queue")
+            .select("retry_count, max_retries")
+            .eq("task_id", task_id)
+            .limit(1)
+            .execute()
+        )
+        task_data = current.data[0] if current.data else {}
+        retry_count = task_data.get("retry_count", 0)
+        max_retries = task_data.get("max_retries", 3)
+
+        if retry and retry_count < max_retries:
+            updates: dict[str, Any] = {
+                "status": "pending",
+                "error_message": error_message,
+                "retry_count": retry_count + 1,
+                "claimed_at": None,
+                "heartbeat_at": None,
+            }
+        else:
+            updates = {
+                "status": "failed",
+                "error_message": error_message,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+        result = (
+            self.client.table("task_queue")
+            .update(updates)
+            .eq("task_id", task_id)
+            .execute()
+        )
+        return result.data[0] if result.data else {}
+
+    def heartbeat_task(self, task_id: str) -> None:
+        """Update heartbeat timestamp for a running task."""
+        self.client.table("task_queue").update(
+            {"heartbeat_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("task_id", task_id).execute()
+
+    def recover_zombie_tasks(self, stale_minutes: int = 10) -> int:
+        """Recover zombie tasks via RPC. Returns count recovered."""
+        result = self.client.rpc(
+            "recover_zombie_tasks",
+            {"p_stale_minutes": stale_minutes},
+        ).execute()
+        return result.data if isinstance(result.data, int) else 0
+
+    def count_pending_tasks(self, agent_id: str) -> int:
+        """Count pending tasks for an agent."""
+        result = (
+            self.client.table("task_queue")
+            .select("id", count="exact")
+            .eq("target_agent_id", agent_id)
+            .eq("status", "pending")
+            .eq("vertical_id", self.vertical_id)
+            .execute()
+        )
+        return result.count or 0
+
+    def list_tasks(
+        self,
+        agent_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """List tasks with optional filters."""
+        query = (
+            self.client.table("task_queue")
+            .select("*")
+            .eq("vertical_id", self.vertical_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+        )
+        if agent_id:
+            query = query.eq("target_agent_id", agent_id)
+        if status:
+            query = query.eq("status", status)
+        return query.execute().data
+
+    # ------------------------------------------------------------------
+    # Shared Insights (Cross-Agent Brain)
+    # ------------------------------------------------------------------
+
+    def store_insight(
+        self,
+        source_agent_id: str,
+        insight_type: str,
+        content: str,
+        title: str = "",
+        confidence_score: float = 0.5,
+        related_entity_id: Optional[str] = None,
+        related_entity_type: Optional[str] = None,
+        metadata: Optional[dict] = None,
+        vertical_id: Optional[str] = None,
+        embedding: Optional[list[float]] = None,
+    ) -> dict:
+        """Store a new insight in the shared brain."""
+        data: dict[str, Any] = {
+            "source_agent_id": source_agent_id,
+            "insight_type": insight_type,
+            "title": title,
+            "content": content,
+            "confidence_score": confidence_score,
+            "metadata": metadata or {},
+            "vertical_id": vertical_id or self.vertical_id,
+        }
+        if related_entity_id:
+            data["related_entity_id"] = related_entity_id
+        if related_entity_type:
+            data["related_entity_type"] = related_entity_type
+        if embedding:
+            data["embedding"] = embedding
+        result = (
+            self.client.table("shared_insights")
+            .insert(data)
+            .execute()
+        )
+        return result.data[0] if result.data else {}
+
+    def search_insights(
+        self,
+        query_embedding: list[float],
+        insight_type: Optional[str] = None,
+        source_agent_id: Optional[str] = None,
+        limit: int = 5,
+        similarity_threshold: float = 0.7,
+    ) -> list[dict]:
+        """Semantic search over shared insights."""
+        params: dict[str, Any] = {
+            "query_embedding": query_embedding,
+            "match_count": limit,
+            "match_threshold": similarity_threshold,
+            "p_vertical_id": self.vertical_id,
+        }
+        if insight_type:
+            params["p_insight_type"] = insight_type
+        if source_agent_id:
+            params["p_source_agent_id"] = source_agent_id
+        result = self.client.rpc(
+            "match_shared_insights", params
+        ).execute()
+        return result.data
+
+    # ------------------------------------------------------------------
+    # Agent Content (Generated Artifacts)
+    # ------------------------------------------------------------------
+
+    def store_content(self, data: dict[str, Any]) -> dict:
+        """Store generated content (blog, proposal, ad copy, etc.)."""
+        data["vertical_id"] = self.vertical_id
+        result = (
+            self.client.table("agent_content")
+            .insert(data)
+            .execute()
+        )
+        return result.data[0] if result.data else {}
+
+    def update_content(
+        self, content_id: str, updates: dict[str, Any]
+    ) -> dict:
+        """Update content status, body, or metadata."""
+        result = (
+            self.client.table("agent_content")
+            .update(updates)
+            .eq("id", content_id)
+            .eq("vertical_id", self.vertical_id)
+            .execute()
+        )
+        return result.data[0] if result.data else {}
+
+    def list_content(
+        self,
+        agent_id: Optional[str] = None,
+        content_type: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """List generated content with optional filters."""
+        query = (
+            self.client.table("agent_content")
+            .select("*")
+            .eq("vertical_id", self.vertical_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+        )
+        if agent_id:
+            query = query.eq("agent_id", agent_id)
+        if content_type:
+            query = query.eq("content_type", content_type)
+        if status:
+            query = query.eq("status", status)
+        return query.execute().data
