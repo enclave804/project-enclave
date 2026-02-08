@@ -9,15 +9,17 @@ Design principles:
 - Config-driven: behavior defined by YAML, not code
 - Shared knowledge: all agents read/write the same RAG store
 - Human-in-the-loop: configurable gates before critical actions
-- Observable: every run logged to agent_runs table
+- Observable: every run logged to agent_runs table + LangFuse traces
 - Circuit breaker: auto-disables after consecutive failures
 - Confidence gating: only high-confidence insights enter the shared brain
 - Neural router: cheap intent classification before waking the LLM
 - Refinement loop: agents self-critique and improve output quality
+- Feature flags: dynamic config from DB for safe rollouts
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 import uuid
@@ -28,8 +30,27 @@ from typing import Any, Optional, Type
 from core.agents.contracts import InsightData
 from core.agents.state import BaseAgentState
 from core.config.agent_schema import AgentInstanceConfig
+from core.observability.tracing import (
+    get_tracer,
+    create_trace,
+    create_span,
+    end_span,
+    flush_tracer,
+    NoOpTrace,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _hash_to_bucket(key: str, buckets: int = 100) -> int:
+    """
+    Deterministically hash a string to a 0-(buckets-1) integer.
+
+    Used for feature flag percentage rollouts: the same key always
+    maps to the same bucket, ensuring consistent behavior per lead.
+    """
+    digest = hashlib.md5(key.encode()).hexdigest()
+    return int(digest[:8], 16) % buckets
 
 
 class BaseAgent(ABC):
@@ -49,6 +70,10 @@ class BaseAgent(ABC):
     Quality:
     - Neural router: _route_task() classifies intent before LLM invocation
     - Refinement loop: _run_refinement_loop() self-critiques output quality
+
+    Observability:
+    - LangFuse tracing: full execution path visualized on a timeline
+    - Feature flags: dynamic rollout via DB config (check_feature_flag)
     """
 
     agent_type: str = ""  # Override via @register_agent_type decorator
@@ -114,8 +139,8 @@ class BaseAgent(ABC):
         """
         Execute a task through this agent's graph.
 
-        Includes circuit breaker logic: on success resets the error counter,
-        on failure increments it and auto-disables if threshold is reached.
+        Full lifecycle: route → execute → refine → write knowledge.
+        Includes circuit breaker, distributed tracing, and feature flags.
 
         Args:
             task: Task input data (agent-specific schema).
@@ -129,6 +154,17 @@ class BaseAgent(ABC):
         thread_id = thread_id or run_id
         start_time = time.monotonic()
 
+        # Initialize distributed trace (no-op if LangFuse not configured)
+        tracer = get_tracer()
+        trace = create_trace(
+            tracer,
+            name=f"{self.agent_type}-run",
+            agent_id=self.agent_id,
+            vertical_id=self.vertical_id,
+            run_id=run_id,
+        )
+        self._current_trace = trace
+
         # Log run start
         self._log_run(run_id, "started", input_data=task)
         logger.info(
@@ -138,7 +174,12 @@ class BaseAgent(ABC):
 
         try:
             # Step 1: Neural Router — classify intent before LLM
+            route_span = create_span(
+                trace, name="neural_router", input_data=task
+            )
             route_action = self._route_task(task)
+            end_span(route_span, output_data={"action": route_action})
+
             if route_action in ("sleep", "discard"):
                 duration_ms = int((time.monotonic() - start_time) * 1000)
                 self._log_run(
@@ -152,15 +193,27 @@ class BaseAgent(ABC):
                     f"Agent '{self.agent_id}' task routed to '{route_action}' "
                     f"— skipping LLM execution ({duration_ms}ms)"
                 )
+                trace.update(
+                    output={"route_action": route_action, "run_id": run_id}
+                )
+                flush_tracer(tracer)
                 return {"route_action": route_action, "run_id": run_id}
 
             # Step 2: Execute graph
+            graph_span = create_span(
+                trace,
+                name="graph_execution",
+                input_data={"thread_id": thread_id},
+            )
             config = {"configurable": {"thread_id": thread_id}}
             initial_state = self._prepare_initial_state(task, run_id)
             result = await graph.ainvoke(initial_state, config=config)
+            end_span(graph_span, output_data=self._sanitize_state(result))
 
             # Step 3: Refinement Loop — self-critique output quality
+            refine_span = create_span(trace, name="refinement_loop")
             result = await self._run_refinement_loop(result)
+            end_span(refine_span, output_data={"refined": True})
 
             duration_ms = int((time.monotonic() - start_time) * 1000)
 
@@ -180,7 +233,15 @@ class BaseAgent(ABC):
             self._on_success()
 
             # Write knowledge back to shared RAG
+            knowledge_span = create_span(trace, name="write_knowledge")
             await self.write_knowledge(result)
+            end_span(knowledge_span, output_data={"written": True})
+
+            trace.update(
+                output=self._sanitize_state(result),
+                metadata={"duration_ms": duration_ms},
+            )
+            flush_tracer(tracer)
 
             return result
 
@@ -195,6 +256,13 @@ class BaseAgent(ABC):
             logger.error(
                 f"Agent '{self.agent_id}' failed run {run_id[:8]}...: {e}"
             )
+
+            # Record error in trace
+            trace.update(
+                output={"error": str(e)[:500]},
+                metadata={"duration_ms": duration_ms},
+            )
+            flush_tracer(tracer)
 
             # Circuit breaker: record failure, may auto-disable
             self._on_failure(str(e)[:500])
@@ -386,6 +454,119 @@ class BaseAgent(ABC):
         except Exception as err:
             logger.warning(f"Failed to store insight: {err}")
             return None
+
+    # ------------------------------------------------------------------
+    # Feature Flags (dynamic config from DB)
+    # ------------------------------------------------------------------
+
+    def check_feature_flag(
+        self, flag_name: str, context: Optional[dict[str, Any]] = None
+    ) -> bool:
+        """
+        Check if a feature flag is enabled for this agent.
+
+        Uses the agent's config stored in the DB `agents` table.
+        Supports percentage-based rollouts by hashing a deterministic
+        key from the context (e.g., lead_id) so the same lead always
+        gets the same decision.
+
+        Flag structure in agent config JSON:
+            {
+                "flags": {
+                    "aggressive_mode": {
+                        "enabled": true,
+                        "rollout_percent": 10
+                    },
+                    "new_email_template": {
+                        "enabled": true
+                    }
+                }
+            }
+
+        Args:
+            flag_name: Name of the feature flag.
+            context: Optional context dict. If the flag has
+                     rollout_percent, context['lead_id'] (or
+                     context['entity_id']) is used as the hash key
+                     for deterministic bucketing.
+
+        Returns:
+            True if the flag is enabled (and the context qualifies
+            under the rollout percentage), False otherwise.
+        """
+        context = context or {}
+
+        # Try reading flags from the agent's config params first
+        # (available without a DB call, set via YAML or runtime)
+        flags = self.config.params.get("flags", {})
+
+        # If no local flags, try loading from DB (best-effort)
+        if not flags:
+            flags = self._load_flags_from_db()
+
+        flag = flags.get(flag_name)
+        if flag is None:
+            return False
+
+        # Simple boolean flag
+        if isinstance(flag, bool):
+            return flag
+
+        # Structured flag: { "enabled": true, "rollout_percent": 10 }
+        if not isinstance(flag, dict):
+            return False
+
+        if not flag.get("enabled", False):
+            return False
+
+        # Full rollout (no percentage specified)
+        rollout_percent = flag.get("rollout_percent")
+        if rollout_percent is None:
+            return True
+
+        # Percentage-based rollout: deterministic hash bucketing
+        hash_key = (
+            context.get("lead_id")
+            or context.get("entity_id")
+            or context.get("task_id")
+            or ""
+        )
+        if not hash_key:
+            # No deterministic key — fall back to False to be safe
+            logger.debug(
+                f"Feature flag '{flag_name}': no lead_id/entity_id in "
+                f"context for rollout bucketing — defaulting to False"
+            )
+            return False
+
+        # Hash the key to get a deterministic 0-99 bucket
+        bucket = _hash_to_bucket(f"{self.agent_id}:{flag_name}:{hash_key}")
+        result = bucket < rollout_percent
+
+        logger.debug(
+            f"Feature flag '{flag_name}': bucket={bucket}, "
+            f"rollout={rollout_percent}% → {'enabled' if result else 'disabled'}"
+        )
+        return result
+
+    def _load_flags_from_db(self) -> dict[str, Any]:
+        """
+        Load feature flags from the DB agent config (best-effort).
+
+        Returns empty dict on any failure.
+        """
+        try:
+            agent_record = self.db.get_agent(
+                agent_id=self.agent_id,
+                vertical_id=self.vertical_id,
+            )
+            if agent_record and isinstance(agent_record, dict):
+                config = agent_record.get("config", {})
+                if isinstance(config, dict):
+                    return config.get("flags", {})
+        except Exception as err:
+            logger.debug(f"Could not load feature flags from DB: {err}")
+        return {}
 
     # ------------------------------------------------------------------
     # State Preparation

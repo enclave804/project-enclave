@@ -27,8 +27,14 @@ rich>=13.0.0
 # Utilities
 python-dotenv>=1.0.0
 
+# Observability
+langfuse>=2.0.0
+
 # Testing
 pytest>=8.0.0
+
+# Evals (LLM-as-a-Judge)
+deepeval>=1.0.0
 
 # Dashboard
 streamlit>=1.35.0
