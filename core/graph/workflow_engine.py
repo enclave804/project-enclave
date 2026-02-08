@@ -9,10 +9,12 @@ all nodes, edges, and checkpoints.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from anthropic import Anthropic
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, StateGraph
 
 from core.config.schema import VerticalConfig
@@ -31,6 +33,23 @@ from core.rag.ingestion import KnowledgeIngester
 from core.rag.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
+
+# Default path for persistent checkpoint storage
+CHECKPOINT_DB_PATH = Path(__file__).parent.parent.parent / ".checkpoints.db"
+
+
+def get_persistent_checkpointer(db_path: str | Path | None = None) -> SqliteSaver:
+    """
+    Create a persistent SQLite checkpointer.
+
+    This allows graph state to survive between CLI invocations,
+    enabling the `review` command to find and resume interrupted runs.
+    """
+    import sqlite3
+
+    path = str(db_path or CHECKPOINT_DB_PATH)
+    conn = sqlite3.connect(path, check_same_thread=False)
+    return SqliteSaver(conn)
 
 
 def build_pipeline_graph(
@@ -161,7 +180,10 @@ def build_pipeline_graph(
 
     # Compile with checkpointer
     if checkpointer is None:
-        checkpointer = MemorySaver()
+        if test_mode:
+            checkpointer = MemorySaver()  # In-memory for tests (no persistence needed)
+        else:
+            checkpointer = get_persistent_checkpointer()  # Persistent for production
 
     compiled = graph.compile(
         checkpointer=checkpointer,

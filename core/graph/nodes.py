@@ -257,20 +257,20 @@ class PipelineNodes:
         signal_weight = 0.3 / max(len(icp.signals), 1)
         max_score += 0.3
 
+        # Pre-build searchable strings (used for both signals and disqualifiers)
+        tech_str = " ".join(
+            f"{k} {v}" for k, v in tech_stack.items()
+        ).lower()
+        vuln_str = " ".join(str(v) for v in vulns).lower()
+
         for signal in icp.signals:
             signal_lower = signal.lower()
             # Check tech stack
-            tech_str = " ".join(
-                f"{k} {v}" for k, v in tech_stack.items()
-            ).lower()
             if signal_lower in tech_str:
                 score += signal_weight
                 matching_signals.append(signal)
                 continue
             # Check vulnerabilities
-            vuln_str = " ".join(
-                str(v) for v in vulns
-            ).lower()
             if signal_lower in vuln_str:
                 score += signal_weight
                 matching_signals.append(signal)
@@ -286,12 +286,17 @@ class PipelineNodes:
                     break
 
         # Disqualifier check
+        company_size = state.get("company_size", 0) or 0
         for disq in icp.disqualifiers:
             disq_lower = disq.lower()
+            # Check if disqualifier mentions large security teams
             if "10plus" in disq_lower and "security_team" in disq_lower:
-                # Heuristic: if they have CISO + large team, likely have internal security
-                pass  # Would need additional data to verify
-            if disq_lower in tech_str if 'tech_str' in dir() else False:
+                # Companies with 500+ employees likely have internal security
+                if company_size >= 500:
+                    matching_disqualifiers.append(disq)
+                continue
+            # Check if disqualifier matches tech stack
+            if disq_lower in tech_str:
                 matching_disqualifiers.append(disq)
 
         # Normalize score
@@ -606,18 +611,68 @@ SUBJECT: [subject line]
         """
         Send the approved email via the email sending infrastructure.
 
-        In production, this triggers an n8n webhook that handles
-        the actual sending via SendGrid/Mailgun.
-        For now, this creates the outreach event record in the DB.
+        Attempts to send via EmailEngine (SendGrid/Mailgun) if configured.
+        Falls back to record-only mode if no email provider key is set.
+        Always creates the outreach event in the database.
         """
+        import os
+
         start = time.time()
         updates: dict[str, Any] = {"current_node": "send_outreach"}
 
         # Use edited version if human made changes
         subject = state.get("edited_subject") or state.get("draft_email_subject", "")
         body = state.get("edited_body") or state.get("draft_email_body", "")
+        to_email = state.get("contact_email", "")
+        to_name = state.get("contact_name", "")
 
-        # Create outreach event
+        # Attempt actual email sending via provider
+        provider_id = None
+        send_status = "recorded"  # default: logged but not sent
+
+        sendgrid_key = os.environ.get("SENDGRID_API_KEY", "").strip()
+        mailgun_key = os.environ.get("MAILGUN_API_KEY", "").strip()
+
+        if sendgrid_key or mailgun_key:
+            try:
+                from core.outreach.email_engine import EmailEngine
+
+                provider = "sendgrid" if sendgrid_key else "mailgun"
+                email_cfg = self.config.outreach.email
+
+                engine = EmailEngine(
+                    provider=provider,
+                    sending_domain=email_cfg.sending_domain,
+                    reply_to=email_cfg.reply_to,
+                )
+
+                result = await engine.send_email(
+                    to_email=to_email,
+                    to_name=to_name,
+                    subject=subject,
+                    body_html=body,
+                    body_text=body,  # plain text fallback
+                    from_name=self.config.vertical_name,
+                    tracking_id=state.get("lead_id"),
+                )
+
+                provider_id = result.get("message_id", "")
+                send_status = "sent"
+                logger.info(
+                    f"Email sent via {provider} to {to_email} "
+                    f"(message_id: {provider_id})"
+                )
+            except Exception as e:
+                logger.error(f"Email sending failed: {e}")
+                send_status = "send_failed"
+                updates["send_error"] = str(e)
+        else:
+            logger.warning(
+                "No email provider configured (SENDGRID_API_KEY or MAILGUN_API_KEY). "
+                f"Outreach to {to_email} recorded but NOT sent."
+            )
+
+        # Create outreach event in database
         event = self.db.create_outreach_event({
             "contact_id": state.get("contact_id"),
             "company_id": state.get("company_id"),
@@ -628,7 +683,7 @@ SUBJECT: [subject line]
             "sequence_step": 1,
             "subject": subject,
             "body_preview": body[:500],
-            "status": "sent",
+            "status": send_status,
             "sent_at": datetime.now(timezone.utc).isoformat(),
         })
 
@@ -636,17 +691,12 @@ SUBJECT: [subject line]
         if state.get("template_id"):
             self.db.increment_template_usage(state["template_id"])
 
-        updates["email_sent"] = True
+        updates["email_sent"] = send_status == "sent"
         updates["sent_at"] = datetime.now(timezone.utc).isoformat()
-
-        # TODO: Trigger n8n webhook for actual email sending
-        # The n8n workflow will:
-        # 1. Send the email via SendGrid/Mailgun
-        # 2. Return the sending_provider_id
-        # 3. Set up open/click tracking
+        updates["sending_provider_id"] = provider_id or "NO_PROVIDER"
 
         logger.info(
-            f"Outreach sent to {state.get('contact_email')} "
+            f"Outreach {send_status} for {to_email} "
             f"(approach: {state.get('selected_approach')})"
         )
 

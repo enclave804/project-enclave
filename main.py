@@ -173,6 +173,107 @@ def validate(
 
 
 @app.command()
+def status(
+    vertical: str = typer.Argument(
+        "enclave_guard", help="Vertical ID (default: enclave_guard)"
+    ),
+):
+    """Check all API connections and service status."""
+    import httpx
+
+    config = _get_config(vertical)
+
+    table = Table(title=f"Service Status — {config.vertical_name}")
+    table.add_column("Service", style="cyan", width=20)
+    table.add_column("Status", width=14)
+    table.add_column("Details")
+
+    # 1. Supabase
+    url = os.environ.get("SUPABASE_URL", "").strip()
+    key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+    if url and key:
+        try:
+            from core.integrations.supabase_client import EnclaveDB
+            db = EnclaveDB(vertical_id=config.vertical_id)
+            # Quick health check: count companies
+            result = db.client.table("companies").select("id", count="exact").limit(0).execute()
+            count_val = result.count if hasattr(result, "count") else "?"
+            table.add_row("Supabase", "[green]CONNECTED[/]", f"{url.split('//')[1].split('.')[0]} ({count_val} companies)")
+        except Exception as e:
+            table.add_row("Supabase", "[red]ERROR[/]", str(e)[:60])
+    else:
+        table.add_row("Supabase", "[red]MISSING[/]", "Set SUPABASE_URL + SUPABASE_SERVICE_KEY")
+
+    # 2. Anthropic
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if anthropic_key:
+        try:
+            from anthropic import Anthropic
+            client = Anthropic()
+            # Light-weight check: create a tiny completion
+            resp = client.messages.create(
+                model="claude-sonnet-4-5-20250514",
+                max_tokens=5,
+                messages=[{"role": "user", "content": "Say OK"}],
+            )
+            table.add_row("Anthropic", "[green]CONNECTED[/]", f"Key: ...{anthropic_key[-6:]}")
+        except Exception as e:
+            err = str(e)
+            if "credit" in err.lower() or "billing" in err.lower() or "insufficient" in err.lower():
+                table.add_row("Anthropic", "[yellow]NO CREDITS[/]", "Key valid, add credits at console.anthropic.com")
+            else:
+                table.add_row("Anthropic", "[red]ERROR[/]", err[:60])
+    else:
+        table.add_row("Anthropic", "[red]MISSING[/]", "Set ANTHROPIC_API_KEY")
+
+    # 3. OpenAI (embeddings)
+    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if openai_key:
+        try:
+            from core.rag.embeddings import EmbeddingEngine
+            embedder = EmbeddingEngine()
+            # Quick test: embed a short string
+            import asyncio
+            vec = asyncio.run(embedder.embed_text("test"))
+            dim = len(vec) if vec else 0
+            table.add_row("OpenAI", "[green]CONNECTED[/]", f"Embeddings OK ({dim}D vectors)")
+        except Exception as e:
+            table.add_row("OpenAI", "[red]ERROR[/]", str(e)[:60])
+    else:
+        table.add_row("OpenAI", "[red]MISSING[/]", "Set OPENAI_API_KEY")
+
+    # 4. Apollo
+    apollo_key = os.environ.get(config.apollo.api_key_env, "").strip()
+    if apollo_key:
+        table.add_row("Apollo.io", "[green]CONFIGURED[/]", f"Key: ...{apollo_key[-6:]}")
+    else:
+        table.add_row("Apollo.io", "[yellow]NOT SET[/]", f"Set {config.apollo.api_key_env} for lead sourcing")
+
+    # 5. SendGrid
+    sg_key = os.environ.get("SENDGRID_API_KEY", "").strip()
+    if sg_key:
+        table.add_row("SendGrid", "[green]CONFIGURED[/]", f"Domain: {config.outreach.email.sending_domain}")
+    else:
+        table.add_row("SendGrid", "[dim]NOT SET[/]", "Optional — set SENDGRID_API_KEY for email sending")
+
+    # 6. Mailgun
+    mg_key = os.environ.get("MAILGUN_API_KEY", "").strip()
+    if mg_key:
+        table.add_row("Mailgun", "[green]CONFIGURED[/]", f"Domain: {config.outreach.email.sending_domain}")
+    else:
+        table.add_row("Mailgun", "[dim]NOT SET[/]", "Optional — set MAILGUN_API_KEY for email sending")
+
+    # 7. Shodan
+    shodan_key = os.environ.get("SHODAN_API_KEY", "").strip()
+    if shodan_key:
+        table.add_row("Shodan", "[green]CONFIGURED[/]", "Enhanced port scanning enabled")
+    else:
+        table.add_row("Shodan", "[dim]NOT SET[/]", "Optional — HTTP header scanning still works")
+
+    console.print(table)
+
+
+@app.command()
 def pull_leads(
     vertical: str = typer.Argument(..., help="Vertical ID"),
     count: int = typer.Option(25, help="Number of leads to pull"),
@@ -306,24 +407,273 @@ def review(
     vertical: str = typer.Argument(..., help="Vertical ID"),
 ):
     """Review pending outreach emails (human-in-the-loop)."""
-    console.print(Panel(
-        "[cyan]Human Review Interface[/]\n\n"
-        "This will show pending email drafts for approval.\n"
-        "You can: approve, edit, reject, or skip each email.",
-        title="Review Mode",
-    ))
 
-    # TODO: Implement review interface that:
-    # 1. Queries LangGraph checkpointer for interrupted runs
-    # 2. Displays each pending email
-    # 3. Captures human decision
-    # 4. Resumes the graph with the decision
+    async def _run():
+        from core.graph.workflow_engine import (
+            build_pipeline_graph,
+            get_persistent_checkpointer,
+        )
 
-    console.print(
-        "[yellow]Review interface coming in Phase 2. "
-        "For now, the pipeline pauses at the human_review node "
-        "and requires manual intervention.[/]"
-    )
+        config = _get_config(vertical)
+
+        # Use persistent checkpointer to find interrupted runs
+        checkpointer = get_persistent_checkpointer()
+
+        # Review doesn't need Apollo (we're resuming, not sourcing leads)
+        db, mock_apollo, embedder, anthropic_client = _init_test_components(config)
+
+        graph = build_pipeline_graph(
+            config=config,
+            db=db,
+            apollo=mock_apollo,
+            embedder=embedder,
+            anthropic_client=anthropic_client,
+            checkpointer=checkpointer,
+        )
+
+        # Find all interrupted threads by scanning checkpoint storage
+        console.print("[cyan]Scanning for pending reviews...[/]")
+
+        pending = []
+        try:
+            # SqliteSaver stores checkpoints with thread_id configs
+            # We need to list threads that are interrupted at human_review
+            import sqlite3
+            from core.graph.workflow_engine import CHECKPOINT_DB_PATH
+
+            if not CHECKPOINT_DB_PATH.exists():
+                console.print(Panel(
+                    "[yellow]No checkpoint database found.[/]\n\n"
+                    "Run the pipeline first to generate email drafts:\n"
+                    f"  [dim]python main.py run {vertical}[/]",
+                    title="No Pending Reviews",
+                ))
+                return
+
+            conn = sqlite3.connect(str(CHECKPOINT_DB_PATH))
+            cursor = conn.cursor()
+
+            # Check if checkpoints table exists
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='checkpoints'"
+            )
+            if not cursor.fetchone():
+                conn.close()
+                console.print(Panel(
+                    "[yellow]No pipeline runs recorded yet.[/]\n\n"
+                    "Run the pipeline first to generate email drafts:\n"
+                    f"  [dim]python main.py run {vertical}[/]",
+                    title="No Pending Reviews",
+                ))
+                return
+
+            # Get all distinct thread IDs from checkpoints
+            cursor.execute("""
+                SELECT DISTINCT thread_id FROM checkpoints
+                ORDER BY thread_ts DESC
+            """)
+            thread_ids = [row[0] for row in cursor.fetchall()]
+            conn.close()
+
+            for thread_id in thread_ids:
+                try:
+                    state = graph.get_state({"configurable": {"thread_id": thread_id}})
+                    if state and state.next and "human_review" in state.next:
+                        vals = state.values
+                        pending.append({
+                            "thread_id": thread_id,
+                            "state": vals,
+                            "config": {"configurable": {"thread_id": thread_id}},
+                        })
+                except Exception:
+                    continue  # Skip corrupted/invalid checkpoints
+
+        except Exception as e:
+            console.print(f"[red]Error scanning checkpoints: {e}[/]")
+            return
+
+        if not pending:
+            console.print(Panel(
+                "[green]No pending reviews![/]\n\n"
+                "All email drafts have been reviewed.\n"
+                "Run the pipeline to generate new drafts.",
+                title="Review Queue Empty",
+            ))
+            return
+
+        console.print(Panel(
+            f"[cyan]Found {len(pending)} email(s) awaiting review.[/]\n\n"
+            "For each email you can:\n"
+            "  [green]a[/]pprove  — send the email as-is\n"
+            "  [yellow]e[/]dit     — modify subject/body, then approve\n"
+            "  [red]r[/]eject   — send back for re-drafting with feedback\n"
+            "  [dim]s[/]kip     — skip this lead entirely",
+            title="Human Review",
+            border_style="cyan",
+        ))
+
+        approved = 0
+        rejected = 0
+        skipped = 0
+
+        for i, item in enumerate(pending, 1):
+            state = item["state"]
+            thread_config = item["config"]
+
+            console.print(f"\n[bold cyan]{'─' * 60}[/bold cyan]")
+            console.print(
+                f"[bold]Review {i}/{len(pending)}:[/bold] "
+                f"{state.get('contact_name', '?')} "
+                f"({state.get('contact_title', '?')} @ {state.get('company_name', '?')})"
+            )
+
+            # Show the draft
+            console.print(Panel(
+                f"[bold]To:[/bold] {state.get('contact_email', '?')}\n"
+                f"[bold]Subject:[/bold] {state.get('draft_email_subject', '(no subject)')}\n"
+                f"[bold]Approach:[/bold] {state.get('selected_approach', '?')} "
+                f"| [bold]Persona:[/bold] {state.get('selected_persona', '?')}\n"
+                f"[bold]Score:[/bold] {state.get('qualification_score', 0):.0%}\n\n"
+                f"{state.get('draft_email_body', '(no body)')}",
+                title="Draft Email",
+                border_style="blue",
+            ))
+
+            # Get user decision
+            while True:
+                choice = Prompt.ask(
+                    "[bold]Decision[/bold]",
+                    choices=["a", "e", "r", "s"],
+                    default="a",
+                )
+
+                if choice == "a":
+                    # Approve — update state and resume
+                    graph.update_state(
+                        thread_config,
+                        {
+                            "human_review_status": "approved",
+                            "review_attempts": state.get("review_attempts", 0) + 1,
+                        },
+                        as_node="human_review",
+                    )
+                    console.print("[green]✓ Approved — sending...[/]")
+                    try:
+                        result = await graph.ainvoke(None, config=thread_config)
+                        if result.get("email_sent"):
+                            console.print(
+                                f"[green]✓ Email sent to {state.get('contact_email')}[/]"
+                            )
+                        else:
+                            console.print(
+                                f"[yellow]⚠ Email recorded (no provider configured)[/]"
+                            )
+                    except Exception as e:
+                        console.print(f"[red]Error resuming pipeline: {e}[/]")
+                    approved += 1
+                    break
+
+                elif choice == "e":
+                    # Edit — let user modify subject and body
+                    new_subject = Prompt.ask(
+                        "New subject",
+                        default=state.get("draft_email_subject", ""),
+                    )
+                    console.print(
+                        "[dim]Enter new body (press Enter twice to finish):[/]"
+                    )
+                    body_lines = []
+                    while True:
+                        line = input()
+                        if line == "" and body_lines and body_lines[-1] == "":
+                            body_lines.pop()  # remove trailing blank
+                            break
+                        body_lines.append(line)
+                    new_body = "\n".join(body_lines) if body_lines else state.get("draft_email_body", "")
+
+                    graph.update_state(
+                        thread_config,
+                        {
+                            "human_review_status": "edited",
+                            "edited_subject": new_subject,
+                            "edited_body": new_body,
+                            "review_attempts": state.get("review_attempts", 0) + 1,
+                        },
+                        as_node="human_review",
+                    )
+                    console.print("[green]✓ Edited & approved — sending...[/]")
+                    try:
+                        result = await graph.ainvoke(None, config=thread_config)
+                        if result.get("email_sent"):
+                            console.print(
+                                f"[green]✓ Email sent to {state.get('contact_email')}[/]"
+                            )
+                        else:
+                            console.print(
+                                f"[yellow]⚠ Email recorded (no provider configured)[/]"
+                            )
+                    except Exception as e:
+                        console.print(f"[red]Error resuming pipeline: {e}[/]")
+                    approved += 1
+                    break
+
+                elif choice == "r":
+                    # Reject — ask for feedback and loop back to draft
+                    feedback = Prompt.ask("Feedback for re-drafting")
+                    graph.update_state(
+                        thread_config,
+                        {
+                            "human_review_status": "rejected",
+                            "human_feedback": feedback,
+                            "review_attempts": state.get("review_attempts", 0) + 1,
+                        },
+                        as_node="human_review",
+                    )
+                    console.print(
+                        "[yellow]↻ Rejected — will re-draft with your feedback.[/]"
+                    )
+                    try:
+                        # Resume — graph will loop back to draft_outreach
+                        result = await graph.ainvoke(None, config=thread_config)
+                        # After re-draft, it'll hit human_review again
+                        # and interrupt — so it'll show up in next review
+                        console.print(
+                            "[yellow]New draft generated — it will appear in next review.[/]"
+                        )
+                    except Exception as e:
+                        console.print(f"[red]Error resuming pipeline: {e}[/]")
+                    rejected += 1
+                    break
+
+                elif choice == "s":
+                    # Skip — end this lead's pipeline
+                    graph.update_state(
+                        thread_config,
+                        {
+                            "human_review_status": "skipped",
+                            "skip_reason": "Skipped during human review",
+                            "review_attempts": state.get("review_attempts", 0) + 1,
+                        },
+                        as_node="human_review",
+                    )
+                    console.print("[dim]⊘ Skipped[/]")
+                    try:
+                        await graph.ainvoke(None, config=thread_config)
+                    except Exception:
+                        pass  # Best-effort resume to write_to_rag
+                    skipped += 1
+                    break
+
+        # Summary
+        console.print(f"\n[bold]{'─' * 60}[/bold]")
+        console.print(Panel(
+            f"[green]Approved:[/green] {approved}\n"
+            f"[yellow]Rejected (re-drafting):[/yellow] {rejected}\n"
+            f"[dim]Skipped:[/dim] {skipped}",
+            title="Review Summary",
+        ))
+
+    asyncio.run(_run())
 
 
 @app.command()

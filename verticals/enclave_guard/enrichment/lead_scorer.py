@@ -220,14 +220,49 @@ class CybersecurityLeadScorer:
         """
         score = 0.3  # baseline — cold outreach always has moderate timing
 
-        # Outdated tech detection
+        # Outdated tech detection using known EOL/outdated version thresholds
+        outdated_thresholds: dict[str, list[str]] = {
+            "php": ["5.", "7.0", "7.1", "7.2", "7.3", "7.4"],
+            "wordpress": ["4.", "5.0", "5.1", "5.2", "5.3", "5.4", "5.5", "5.6", "5.7", "5.8", "5.9"],
+            "apache": ["2.2", "2.0", "1."],
+            "nginx": ["1.18", "1.16", "1.14"],
+            "node.js": ["12", "14", "16"],
+            "mysql": ["5.5", "5.6", "5.7"],
+            "postgresql": ["11", "12", "13"],
+            "java": ["8", "11"],
+            "python": ["2.", "3.6", "3.7", "3.8"],
+            "windows server": ["2012", "2016"],
+            "jquery": ["1.", "2."],
+            "react": ["16.", "15.", "14."],
+            "angular": ["8", "9", "10", "11", "12"],
+            "openssl": ["1.0", "1.1.0"],
+            "iis": ["7.", "8.", "8.5"],
+            "ftp": [],  # Any FTP usage is a signal (should be SFTP)
+        }
+
+        outdated_count = 0
         for tech, version in tech_stack.items():
-            if version and any(
-                old in version.lower()
-                for old in ["5.", "4.", "3.", "2.", "1."]
-            ):
-                # Very rough heuristic — would need version DB for accuracy
-                pass
+            tech_lower = tech.lower()
+            version_str = str(version).lower().strip()
+
+            # FTP presence alone is a signal
+            if tech_lower == "ftp":
+                outdated_count += 1
+                signals.append(f"outdated_{tech_lower}")
+                continue
+
+            for known_tech, old_versions in outdated_thresholds.items():
+                if known_tech in tech_lower and version_str:
+                    if any(version_str.startswith(old) for old in old_versions):
+                        outdated_count += 1
+                        signals.append(f"outdated_{known_tech}")
+                        break
+
+        # Score boost based on outdated tech count
+        if outdated_count >= 3:
+            score += 0.5  # Multiple outdated technologies — strong timing signal
+        elif outdated_count >= 1:
+            score += 0.3  # Some outdated tech
 
         return min(score, 1.0)
 
