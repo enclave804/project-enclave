@@ -89,15 +89,28 @@ class TemplateEngine:
 
     def list_templates(self) -> list[str]:
         """List all available template files."""
-        if not self.template_dir.exists():
+        if not self.env or not self.template_dir.exists():
             return []
         return [
             f.name for f in self.template_dir.glob("*.md")
         ]
 
     def get_template_content(self, template_name: str) -> str:
-        """Read raw template content for preview."""
-        path = self.template_dir / template_name
+        """Read raw template content for preview.
+
+        Validates that the resolved path stays within the template directory
+        to prevent path traversal attacks (e.g., '../../etc/passwd').
+        """
+        if not self.template_dir.exists():
+            raise FileNotFoundError(
+                f"Template directory not found: {self.template_dir}"
+            )
+        path = (self.template_dir / template_name).resolve()
+        # Ensure the resolved path is still inside the template directory
+        if not str(path).startswith(str(self.template_dir.resolve())):
+            raise ValueError(
+                f"Invalid template name (path traversal detected): {template_name}"
+            )
         if not path.exists():
             raise FileNotFoundError(f"Template not found: {path}")
         return path.read_text()

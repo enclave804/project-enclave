@@ -16,7 +16,6 @@ from anthropic import Anthropic
 
 from core.config.schema import VerticalConfig
 from core.graph.state import LeadState
-from core.integrations.apollo_client import ApolloClient
 from core.integrations.supabase_client import EnclaveDB
 from core.rag.embeddings import EmbeddingEngine
 from core.rag.ingestion import KnowledgeIngester
@@ -37,7 +36,7 @@ class PipelineNodes:
         self,
         config: VerticalConfig,
         db: EnclaveDB,
-        apollo: ApolloClient,
+        apollo: Any,  # ApolloClient or MockApolloClient
         retriever: KnowledgeRetriever,
         ingester: KnowledgeIngester,
         anthropic_client: Anthropic,
@@ -170,7 +169,7 @@ class PipelineNodes:
                     enrichment_sources.append("apollo_enrichment")
                 updates["enrichment_sources"] = enrichment_sources
 
-        except Exception as e:
+        except (ConnectionError, TimeoutError, OSError, ValueError, KeyError) as e:
             logger.warning(f"Apollo enrichment failed for {domain}: {e}")
             # Non-fatal: we still have the initial Apollo data
 
@@ -511,6 +510,15 @@ SUBJECT: [subject line]
             messages=[{"role": "user", "content": prompt}],
         )
 
+        # Guard against empty or unexpected response from Claude
+        if not response.content or not hasattr(response.content[0], "text"):
+            logger.error("Claude returned empty or non-text response for email draft")
+            updates["error"] = "LLM returned empty response"
+            updates["error_node"] = "draft_outreach"
+            updates["draft_email_subject"] = "[DRAFT FAILED]"
+            updates["draft_email_body"] = "The LLM returned an empty response. Please retry."
+            return updates
+
         response_text = response.content[0].text
 
         # Parse subject and body
@@ -662,7 +670,7 @@ SUBJECT: [subject line]
                     f"Email sent via {provider} to {to_email} "
                     f"(message_id: {provider_id})"
                 )
-            except Exception as e:
+            except (ConnectionError, TimeoutError, OSError, ValueError, RuntimeError) as e:
                 logger.error(f"Email sending failed: {e}")
                 send_status = "send_failed"
                 updates["send_error"] = str(e)
@@ -738,7 +746,7 @@ SUBJECT: [subject line]
                         "employee_count": state.get("company_size", 0),
                     },
                 )
-            except Exception as e:
+            except (ConnectionError, TimeoutError, OSError, ValueError) as e:
                 logger.warning(f"Failed to ingest company intel: {e}")
 
         # Store outreach result (if email was sent)
@@ -754,7 +762,7 @@ SUBJECT: [subject line]
                     subject=state.get("draft_email_subject", ""),
                     body_preview=(state.get("draft_email_body", "") or "")[:200],
                 )
-            except Exception as e:
+            except (ConnectionError, TimeoutError, OSError, ValueError) as e:
                 logger.warning(f"Failed to ingest outreach result: {e}")
 
         updates["knowledge_written"] = True

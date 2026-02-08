@@ -36,5 +36,8 @@ logs/
 # LangGraph checkpoints
 .checkpoints.db
 
+# Testing
+.pytest_cache/
+
 # Claude Code
 .claude/
