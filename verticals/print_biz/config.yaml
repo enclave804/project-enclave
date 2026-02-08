@@ -1,0 +1,61 @@
+# PrintBiz — Vertical Configuration
+#
+# Tenant #2: 3D Printing Services for Architecture Firms
+# Proves that the Sovereign Venture Engine supports completely
+# different businesses with ZERO code changes to core/.
+
+vertical_id: print_biz
+name: "PrintBiz — 3D Printing Services"
+description: "B2B 3D printing and rapid prototyping for architecture firms."
+industry: "3D Printing / Additive Manufacturing"
+
+# Company Info
+company:
+  name: "PrintBiz"
+  domain: "printbiz3d.com"
+  tagline: "From CAD to Reality in 48 Hours"
+
+# ICP (Ideal Customer Profile)
+icp:
+  target_industries:
+    - Architecture
+    - Interior Design
+    - Real Estate Development
+    - Urban Planning
+  target_titles:
+    - "Design Director"
+    - "Principal Architect"
+    - "Head of Design"
+    - "VP Operations"
+    - "Studio Manager"
+  target_seniorities:
+    - director
+    - vp
+    - c_suite
+    - manager
+  target_company_sizes:
+    - "11,50"
+    - "51,200"
+    - "201,500"
+  target_locations:
+    - "United States"
+    - "Canada"
+
+# Outreach Strategy
+outreach:
+  sender_name: "PrintBiz Team"
+  sender_email: "hello@printbiz3d.com"
+  daily_lead_limit: 30
+  duplicate_cooldown_days: 60
+
+# Value Proposition
+messaging:
+  pain_points:
+    - "Physical models take weeks to produce manually"
+    - "Client presentations lack tangible 3D context"
+    - "Iterating on architectural designs is expensive"
+  value_props:
+    - "CAD to 3D print in 48 hours"
+    - "Architectural-grade detail at 0.1mm resolution"
+    - "Bulk pricing for firms with recurring projects"
+  offer: "Free sample print of your next project"

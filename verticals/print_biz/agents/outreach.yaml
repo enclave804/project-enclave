@@ -1,0 +1,64 @@
+# Outreach Agent — PrintBiz vertical (Tenant #2)
+#
+# Proves multi-tenancy: same core/agents/implementations/outreach_agent.py
+# code, completely different business context.
+#
+# Target: Architecture firms that need rapid prototyping.
+# Offer: Free sample 3D print of their next project.
+
+agent_id: print_outreach_v1
+agent_type: outreach
+name: "PrintBiz Outreach Agent"
+description: "B2B outreach for 3D printing services targeting architecture firms."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.5
+  max_tokens: 4096
+
+tools:
+  - apollo_search
+  - apollo_enrich
+  - send_email
+  - rag_search
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - send_outreach
+
+schedule:
+  trigger: manual
+
+# Safety
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# PrintBiz-specific params
+params:
+  daily_lead_limit: 30
+  duplicate_cooldown_days: 60
+
+  # ICP targeting
+  target_industry: "Architecture"
+  target_titles:
+    - "Design Director"
+    - "Principal Architect"
+    - "Head of Design"
+    - "VP Operations"
+  target_seniorities:
+    - director
+    - vp
+    - c_suite
+
+  # Messaging
+  offer: "Free sample 3D print of your next project"
+  company_name: "PrintBiz"
+  value_proposition: "CAD to 3D print in 48 hours"
+
+  # Tone
+  tone: "Friendly, creative, solution-oriented"

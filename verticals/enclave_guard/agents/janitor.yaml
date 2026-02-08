@@ -1,0 +1,47 @@
+# Maintenance Agent ("The Janitor") — Enclave Guard vertical
+#
+# Automated data hygiene for the shared brain (shared_insights table).
+# Runs weekly to clean duplicates, merge insights, and prune stale data.
+#
+# This prevents the "knowledge garbage" problem where agents drown
+# in redundant or outdated context from the vector DB.
+
+agent_id: janitor_v1
+agent_type: maintenance
+name: "Maintenance Agent"
+description: "Weekly data hygiene: deduplicates insights, merges into golden records, and prunes stale knowledge."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.2  # Low creativity for summarization
+  max_tokens: 2048
+
+tools: []
+
+browser_enabled: false
+
+human_gates:
+  enabled: false  # Maintenance runs unattended
+
+schedule:
+  trigger: cron
+  cron: "0 3 * * 0"  # Every Sunday at 3 AM
+
+# Safety
+max_consecutive_errors: 3
+rag_write_confidence_threshold: 0.5  # Lower threshold — it's writing golden insights
+
+# Agent-specific params
+params:
+  # Duplicate detection
+  similarity_threshold: 0.95
+  max_duplicate_groups: 50
+
+  # Merge settings
+  max_merges_per_run: 10
+
+  # Prune settings
+  max_age_days: 90
+  min_confidence_for_retention: 0.3

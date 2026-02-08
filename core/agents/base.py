@@ -38,6 +38,7 @@ from core.observability.tracing import (
     flush_tracer,
     NoOpTrace,
 )
+from core.safety.input_guard import SecurityGuard, SecurityException, get_guard
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +150,21 @@ class BaseAgent(ABC):
         Returns:
             Final state after graph execution.
         """
+        # ── Security Airlock: scan task input for prompt injection ──
+        # Recursively validates all string values in the task dict.
+        # Raises SecurityException if any injection pattern is detected.
+        _guard = get_guard()
+        for _key, _val in task.items():
+            if isinstance(_val, str):
+                _guard.validate(_val)
+            elif isinstance(_val, dict):
+                if not _guard.scan_dict(_val):
+                    raise SecurityException(
+                        f"Prompt injection detected in task field '{_key}'",
+                        pattern_name="nested_injection",
+                        input_preview=str(_val)[:100],
+                    )
+
         graph = self.get_graph()
         run_id = str(uuid.uuid4())
         thread_id = thread_id or run_id

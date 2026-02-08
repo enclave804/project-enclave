@@ -1,0 +1,56 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Sovereign Venture Engine — Production Docker Compose
+#
+# Deploys the full platform with Streamlit dashboard + agent runtime.
+# Supabase is hosted externally (supabase.com) — no local DB needed.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml logs -f app
+#
+# For Coolify deployment:
+#   Point the build context to this repo and set env vars in Coolify UI.
+# ═══════════════════════════════════════════════════════════════════════
+
+services:
+  # ──────────────────────────────────────────────────────────────────
+  # Sovereign Cockpit — Dashboard + Agent Runtime
+  # ──────────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    env_file:
+      - .env.prod
+    environment:
+      - ENCLAVE_ENV=production
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    volumes:
+      # Persist sandbox logs for audit trail
+      - sandbox_logs:/app/sandbox_logs
+      # Persist browser session recordings
+      - browser_sessions:/app/browser_sessions
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.5"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+
+volumes:
+  sandbox_logs:
+    driver: local
+  browser_sessions:
+    driver: local
