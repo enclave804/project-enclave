@@ -1,0 +1,66 @@
+[
+  {
+    "type": "vulnerability_knowledge",
+    "title": "Missing Security Headers",
+    "description": "Web applications without proper security headers (HSTS, CSP, X-Content-Type-Options, X-Frame-Options) are vulnerable to clickjacking, MIME sniffing, and cross-site scripting attacks. Most modern web frameworks support these headers out of the box, making their absence a sign of security oversight.",
+    "severity": "medium",
+    "affected_tech": ["Apache", "Nginx", "IIS", "All web servers"],
+    "remediation": "Configure security headers in the web server or application framework. Most can be added in a few lines of configuration."
+  },
+  {
+    "type": "vulnerability_knowledge",
+    "title": "Outdated SSL/TLS Configuration",
+    "description": "Servers still supporting TLS 1.0 or TLS 1.1 are using protocols with known vulnerabilities. Major browsers have dropped support for these protocols. PCI DSS compliance requires TLS 1.2 or higher.",
+    "severity": "high",
+    "affected_tech": ["Apache", "Nginx", "IIS", "Node.js"],
+    "remediation": "Disable TLS 1.0 and 1.1 in server configuration. Enable only TLS 1.2 and 1.3 with strong cipher suites."
+  },
+  {
+    "type": "vulnerability_knowledge",
+    "title": "Exposed Database Ports",
+    "description": "Database services (MySQL 3306, PostgreSQL 5432, MongoDB 27017, Redis 6379) accessible from the internet expose the organization to unauthorized access, data theft, and ransomware. Databases should never be directly internet-facing.",
+    "severity": "critical",
+    "affected_tech": ["MySQL", "PostgreSQL", "MongoDB", "Redis", "Elasticsearch"],
+    "remediation": "Place databases behind a firewall. Use VPN or SSH tunnels for remote access. Implement network segmentation."
+  },
+  {
+    "type": "vulnerability_knowledge",
+    "title": "WordPress Security Gaps",
+    "description": "Outdated WordPress installations and plugins are among the most commonly exploited attack vectors. WordPress powers 40%+ of the web, making it a primary target. Common issues include outdated plugins, default admin paths, and missing file integrity monitoring.",
+    "severity": "high",
+    "affected_tech": ["WordPress", "PHP", "Apache"],
+    "remediation": "Keep WordPress core and all plugins updated. Use a WAF. Implement login rate limiting. Change default admin URL."
+  },
+  {
+    "type": "vulnerability_knowledge",
+    "title": "No SOC2 Compliance Documentation",
+    "description": "Companies handling customer data without SOC2 Type II certification face increasing barriers in enterprise sales. Prospects and partners routinely require SOC2 reports during vendor evaluation. The average SOC2 preparation takes 6-12 months.",
+    "severity": "medium",
+    "affected_tech": ["All"],
+    "remediation": "Begin with a gap assessment to identify areas of non-compliance. Implement required controls. Engage an auditor for Type I, then progress to Type II."
+  },
+  {
+    "type": "vulnerability_knowledge",
+    "title": "Exposed Admin Panels",
+    "description": "Administrative interfaces (wp-admin, /admin, /dashboard, phpMyAdmin) accessible without IP restrictions or multi-factor authentication are vulnerable to brute force attacks and credential stuffing.",
+    "severity": "high",
+    "affected_tech": ["WordPress", "Django", "phpMyAdmin", "All CMS"],
+    "remediation": "Restrict admin access by IP. Implement MFA. Use rate limiting. Monitor for brute force attempts."
+  },
+  {
+    "type": "vulnerability_knowledge",
+    "title": "HIPAA Security Gaps in Healthcare Companies",
+    "description": "Healthcare organizations are required to implement administrative, physical, and technical safeguards under HIPAA. Common gaps include lack of encryption for data at rest, missing audit logs, no business associate agreements with vendors, and insufficient access controls.",
+    "severity": "critical",
+    "affected_tech": ["EHR systems", "Cloud storage", "Email systems"],
+    "remediation": "Conduct a HIPAA risk assessment. Implement encryption, access controls, and audit logging. Ensure all vendors have signed BAAs."
+  },
+  {
+    "type": "vulnerability_knowledge",
+    "title": "FTP Services Still in Use",
+    "description": "FTP transmits credentials and data in plain text. Its presence on a server indicates potential for credential interception and data exposure. SFTP or SCP should be used instead.",
+    "severity": "high",
+    "affected_tech": ["FTP", "vsftpd", "ProFTPD"],
+    "remediation": "Disable FTP. Migrate to SFTP (SSH File Transfer Protocol) or SCP for secure file transfers."
+  }
+]

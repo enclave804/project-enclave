@@ -1,0 +1,56 @@
+# Project Enclave - Docker Compose
+# Runs n8n and the Python pipeline agent.
+# Supabase is hosted externally (supabase.com).
+
+version: '3.8'
+
+services:
+  # --------------------------------------------------------------------------
+  # n8n - Workflow Automation (Nervous System)
+  # --------------------------------------------------------------------------
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_AUTH_PASSWORD:-changeme}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change-this-key}
+      - GENERIC_TIMEZONE=America/Chicago
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n_workflows:/home/node/workflows
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # --------------------------------------------------------------------------
+  # Pipeline Agent - Python Sales Pipeline
+  # --------------------------------------------------------------------------
+  pipeline:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - N8N_BASE_URL=http://n8n:5678
+    volumes:
+      - ../verticals:/app/verticals
+      - ../core:/app/core
+    depends_on:
+      n8n:
+        condition: service_healthy
+
+volumes:
+  n8n_data:
+    driver: local
