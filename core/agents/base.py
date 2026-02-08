@@ -168,8 +168,12 @@ class BaseAgent(ABC):
         # Log run start
         self._log_run(run_id, "started", input_data=task)
         logger.info(
-            f"Agent '{self.agent_id}' starting run {run_id[:8]}... "
-            f"(vertical={self.vertical_id})"
+            "agent_run_started",
+            extra={
+                "agent_id": self.agent_id,
+                "run_id": run_id[:8],
+                "vertical_id": self.vertical_id,
+            },
         )
 
         try:
@@ -190,8 +194,12 @@ class BaseAgent(ABC):
                     duration_ms=duration_ms,
                 )
                 logger.info(
-                    f"Agent '{self.agent_id}' task routed to '{route_action}' "
-                    f"— skipping LLM execution ({duration_ms}ms)"
+                    "agent_task_routed",
+                    extra={
+                        "agent_id": self.agent_id,
+                        "route_action": route_action,
+                        "duration_ms": duration_ms,
+                    },
                 )
                 trace.update(
                     output={"route_action": route_action, "run_id": run_id}
@@ -225,8 +233,13 @@ class BaseAgent(ABC):
                 duration_ms=duration_ms,
             )
             logger.info(
-                f"Agent '{self.agent_id}' completed run {run_id[:8]}... "
-                f"({duration_ms}ms)"
+                "agent_run_completed",
+                extra={
+                    "agent_id": self.agent_id,
+                    "run_id": run_id[:8],
+                    "duration_ms": duration_ms,
+                    "status": "completed",
+                },
             )
 
             # Circuit breaker: reset on success
@@ -254,7 +267,13 @@ class BaseAgent(ABC):
                 duration_ms=duration_ms,
             )
             logger.error(
-                f"Agent '{self.agent_id}' failed run {run_id[:8]}...: {e}"
+                "agent_run_failed",
+                extra={
+                    "agent_id": self.agent_id,
+                    "run_id": run_id[:8],
+                    "duration_ms": duration_ms,
+                    "error": str(e)[:200],
+                },
             )
 
             # Record error in trace

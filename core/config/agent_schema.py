@@ -15,15 +15,23 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AgentToolConfig(BaseModel):
-    """Configuration for a tool available to an agent."""
+    """
+    Configuration for a tool available to an agent.
+
+    In YAML, tools can be specified as either:
+    - Simple string: "apollo_search" → AgentToolConfig(name="apollo_search", type="mcp")
+    - Full object: {name: "apollo_search", type: "builtin", config: {...}}
+
+    The string shorthand is coerced by AgentInstanceConfig's model_validator.
+    """
 
     name: str
     type: str = Field(
-        ...,
+        "mcp",
         description="Tool type: 'mcp', 'builtin', 'browser', or 'custom'",
     )
     mcp_server: Optional[str] = None
@@ -221,3 +229,32 @@ class AgentInstanceConfig(BaseModel):
 
     # Agent-specific params (passed through to implementation)
     params: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_tools(cls, values: Any) -> Any:
+        """
+        Allow tools to be specified as simple strings in YAML.
+
+        Converts:
+            tools: ["apollo_search", "send_email"]
+        Into:
+            tools: [AgentToolConfig(name="apollo_search", type="mcp"),
+                     AgentToolConfig(name="send_email", type="mcp")]
+
+        The verbose format still works:
+            tools:
+              - name: apollo_search
+                type: builtin
+        """
+        if isinstance(values, dict):
+            raw_tools = values.get("tools", [])
+            if isinstance(raw_tools, list):
+                coerced = []
+                for tool in raw_tools:
+                    if isinstance(tool, str):
+                        coerced.append({"name": tool, "type": "mcp"})
+                    else:
+                        coerced.append(tool)
+                values["tools"] = coerced
+        return values

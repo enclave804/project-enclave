@@ -4,6 +4,9 @@
 # the strangler-fig adapter in core/agents/implementations/outreach_agent.py.
 #
 # Owns: lead enrichment, qualification, email drafting, compliance, sending.
+#
+# NOTE: Tools can be listed as simple strings (auto-coerced to MCP type)
+# or as full objects: {name: "tool_name", type: "builtin", config: {...}}
 
 agent_id: outreach
 agent_type: outreach
@@ -16,19 +19,14 @@ model:
   temperature: 0.5
   max_tokens: 4096
 
+# Simplified tool list — strings auto-coerce to type: "mcp"
 tools:
-  - name: apollo_search
-    type: builtin
-  - name: apollo_enrich
-    type: builtin
-  - name: tech_scanner
-    type: builtin
-  - name: send_email
-    type: builtin
-  - name: rag_search
-    type: builtin
-  - name: compliance_check
-    type: builtin
+  - apollo_search
+  - apollo_enrich
+  - tech_scanner
+  - send_email
+  - rag_search
+  - compliance_check
 
 browser_enabled: false
 
