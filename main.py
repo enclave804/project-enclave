@@ -52,17 +52,56 @@ logger = logging.getLogger("enclave")
 
 
 def _get_config(vertical: str) -> VerticalConfig:
-    """Load and return vertical config."""
-    return load_vertical_config(vertical)
+    """Load and return vertical config, with friendly error on failure."""
+    try:
+        return load_vertical_config(vertical)
+    except FileNotFoundError:
+        available = list_available_verticals()
+        available_list = ", ".join(available) if available else "none found"
+        console.print(Panel(
+            f"[red]Vertical not found:[/] [bold]{vertical}[/]\n\n"
+            f"Available verticals: [cyan]{available_list}[/]\n\n"
+            f"To create a new vertical:\n"
+            f"  [dim]mkdir -p verticals/{vertical}[/]\n"
+            f"  [dim]# Add config.yaml based on an existing vertical[/]",
+            title="⚠ Configuration Error",
+            border_style="red",
+        ))
+        raise typer.Exit(code=1)
+
+
+def _check_env_key(var_name: str, label: str, required: bool = True) -> str | None:
+    """Check if an environment variable is set. Shows a friendly error if missing."""
+    value = os.environ.get(var_name, "").strip()
+    if not value:
+        if required:
+            console.print(Panel(
+                f"[red]Missing required API key:[/] [bold]{var_name}[/]\n\n"
+                f"This key is needed for: [cyan]{label}[/]\n\n"
+                f"Set it in your .env file:\n"
+                f"  [dim]{var_name}=your_key_here[/]",
+                title="⚠ Configuration Error",
+                border_style="red",
+            ))
+            raise typer.Exit(code=1)
+        return None
+    return value
 
 
 def _init_components(config: VerticalConfig):
-    """Initialize all pipeline components."""
+    """Initialize all pipeline components with friendly error messages."""
     from anthropic import Anthropic
 
     from core.integrations.apollo_client import ApolloClient
     from core.integrations.supabase_client import EnclaveDB
     from core.rag.embeddings import EmbeddingEngine
+
+    # Pre-check all required keys before initializing anything
+    _check_env_key("SUPABASE_URL", "Database connection")
+    _check_env_key("SUPABASE_SERVICE_KEY", "Database authentication")
+    _check_env_key(config.apollo.api_key_env, "Lead sourcing (Apollo.io)")
+    _check_env_key("OPENAI_API_KEY", "Text embeddings (RAG)")
+    _check_env_key("ANTHROPIC_API_KEY", "AI email drafting (Claude)")
 
     db = EnclaveDB(vertical_id=config.vertical_id)
     apollo = ApolloClient(api_key_env=config.apollo.api_key_env)
@@ -450,6 +489,12 @@ def _init_test_components(config: VerticalConfig):
     from core.integrations.supabase_client import EnclaveDB
     from core.rag.embeddings import EmbeddingEngine
     from core.testing.mock_apollo import MockApolloClient
+
+    # Pre-check keys needed for test mode (Apollo is mocked, so not required)
+    _check_env_key("SUPABASE_URL", "Database connection")
+    _check_env_key("SUPABASE_SERVICE_KEY", "Database authentication")
+    _check_env_key("OPENAI_API_KEY", "Text embeddings (RAG)")
+    _check_env_key("ANTHROPIC_API_KEY", "AI email drafting (Claude)")
 
     db = EnclaveDB(vertical_id=config.vertical_id)
     mock_apollo = MockApolloClient()
