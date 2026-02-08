@@ -41,6 +41,11 @@ app = typer.Typer(
     name="enclave",
     help="Project Enclave - Sovereign Venture Engine",
 )
+agent_app = typer.Typer(
+    name="agent",
+    help="Agent framework commands — list, run, and inspect agents.",
+)
+app.add_typer(agent_app, name="agent")
 console = Console()
 
 # Configure logging
@@ -1083,6 +1088,253 @@ def dashboard(
             "--browser.gatherUsageStats", "false",
         ],
     )
+
+
+# =========================================================================
+# Agent Framework Commands
+# =========================================================================
+
+
+def _init_agent_registry(vertical_id: str):
+    """
+    Discover agents for a vertical using the AgentRegistry.
+
+    Imports the outreach agent implementation so @register_agent_type fires.
+    """
+    # Import implementations so decorators register agent types
+    import core.agents.implementations.outreach_agent  # noqa: F401
+
+    from core.agents.registry import AgentRegistry
+
+    registry = AgentRegistry(vertical_id)
+    registry.discover_agents()
+    return registry
+
+
+@agent_app.command(name="list")
+def agent_list(
+    vertical: str = typer.Argument(
+        "enclave_guard", help="Vertical ID (default: enclave_guard)"
+    ),
+):
+    """List all registered agents for a vertical."""
+    from core.agents.registry import get_registered_types
+
+    registry = _init_agent_registry(vertical)
+    configs = registry.list_configs()
+
+    if not configs:
+        console.print(
+            f"[yellow]No agents found for vertical '{vertical}'.[/]\n"
+            f"Add YAML configs in verticals/{vertical}/agents/"
+        )
+        return
+
+    # Show registered implementation types
+    reg_types = get_registered_types()
+    console.print(
+        f"[dim]Registered agent types: {', '.join(reg_types)}[/]\n"
+    )
+
+    table = Table(title=f"Agents — {vertical}")
+    table.add_column("Agent ID", style="cyan")
+    table.add_column("Type", style="green")
+    table.add_column("Name", style="white")
+    table.add_column("Schedule", style="yellow")
+    table.add_column("Human Gates", style="blue")
+    table.add_column("Status", style="white")
+
+    for cfg in configs:
+        gates = ", ".join(cfg.human_gates.gate_before) if cfg.human_gates.gate_before else "none"
+        schedule = cfg.schedule.cron if cfg.schedule.cron else cfg.schedule.trigger
+        status = "[green]enabled[/]" if cfg.enabled else "[red]disabled[/]"
+        table.add_row(
+            cfg.agent_id,
+            cfg.agent_type,
+            cfg.name,
+            schedule,
+            gates,
+            status,
+        )
+
+    console.print(table)
+
+
+@agent_app.command(name="run")
+def agent_run(
+    vertical: str = typer.Argument(..., help="Vertical ID"),
+    agent_id: str = typer.Argument(..., help="Agent ID to run"),
+    count: int = typer.Option(10, "--leads", "-n", help="Number of leads (outreach)"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate without side effects"),
+):
+    """Run a specific agent within a vertical."""
+
+    async def _run():
+        config = _get_config(vertical)
+        registry = _init_agent_registry(vertical)
+
+        # Check agent exists
+        agent_config = registry.get_config(agent_id)
+        if not agent_config:
+            console.print(
+                f"[red]Agent not found:[/] [bold]{agent_id}[/]\n"
+                f"Available agents: {registry.list_agent_ids()}"
+            )
+            raise typer.Exit(1)
+
+        console.print(Panel(
+            f"[cyan]Running agent:[/] [bold]{agent_config.name}[/]\n"
+            f"Type: {agent_config.agent_type}\n"
+            f"Vertical: {vertical}\n"
+            f"Dry run: {dry_run}",
+            title="Agent Run",
+            border_style="cyan",
+        ))
+
+        # --- Outreach agent (legacy adapter) ---
+        if agent_config.agent_type == "outreach":
+            await _run_outreach_agent(
+                config, registry, agent_id, count, dry_run
+            )
+        else:
+            # Future agents will be dispatched here
+            console.print(
+                f"[yellow]Agent type '{agent_config.agent_type}' "
+                f"does not have a runner yet.[/]"
+            )
+
+    asyncio.run(_run())
+
+
+async def _run_outreach_agent(
+    vertical_config: VerticalConfig,
+    registry,
+    agent_id: str,
+    count: int,
+    dry_run: bool,
+):
+    """Run the outreach agent via the strangler-fig adapter."""
+    from core.agents.implementations.outreach_agent import OutreachAgent
+
+    db, apollo, embedder, anthropic_client = _init_components(vertical_config)
+
+    agent: OutreachAgent = registry.instantiate_agent(
+        agent_id, db, embedder, anthropic_client,
+    )
+    agent.set_legacy_deps(apollo=apollo, vertical_config=vertical_config)
+
+    if dry_run:
+        console.print("[yellow]DRY RUN: Emails will be drafted but NOT sent.[/]")
+        # In dry-run mode, use test mode graph
+        from core.graph.workflow_engine import build_pipeline_graph, process_batch
+
+        graph = build_pipeline_graph(
+            config=vertical_config,
+            db=db,
+            apollo=apollo,
+            embedder=embedder,
+            anthropic_client=anthropic_client,
+            test_mode=True,
+        )
+
+        console.print(f"[cyan]Pulling {count} leads from Apollo...[/]")
+        filters = vertical_config.apollo.filters.model_dump()
+        filters["per_page"] = count
+        leads = await apollo.search_and_parse(filters)
+
+        if not leads:
+            console.print("[yellow]No leads found.[/]")
+            return
+
+        results = await process_batch(graph, leads, vertical_config.vertical_id)
+    else:
+        # Full run via agent framework
+        console.print(f"[cyan]Pulling {count} leads from Apollo...[/]")
+        filters = vertical_config.apollo.filters.model_dump()
+        filters["per_page"] = count
+        leads = await apollo.search_and_parse(filters)
+
+        if not leads:
+            console.print("[yellow]No leads found.[/]")
+            return
+
+        console.print(f"[green]Found {len(leads)} leads. Processing via agent framework...[/]")
+        results = await agent.run({"leads": leads})
+
+    # Display results
+    table = Table(title=f"Agent Results — {agent_id}")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Count", style="white")
+
+    table.add_row("Total Leads", str(results.get("total", len(leads))))
+    table.add_row("Processed", str(results.get("processed", 0)))
+    sent_label = "[green]Simulated[/]" if dry_run else "[green]Sent[/]"
+    table.add_row(sent_label, str(results.get("sent", 0)))
+    table.add_row("[yellow]Skipped[/]", str(results.get("skipped", 0)))
+    table.add_row("[red]Errors[/]", str(results.get("errors", 0)))
+
+    console.print(table)
+
+
+@agent_app.command(name="status")
+def agent_status(
+    vertical: str = typer.Argument(
+        "enclave_guard", help="Vertical ID (default: enclave_guard)"
+    ),
+):
+    """Show agent run statistics for a vertical."""
+    from core.integrations.supabase_client import EnclaveDB
+
+    _get_config(vertical)  # Validate vertical exists
+    registry = _init_agent_registry(vertical)
+
+    _check_env_key("SUPABASE_URL", "Database connection")
+    _check_env_key("SUPABASE_SERVICE_KEY", "Database authentication")
+
+    db = EnclaveDB(vertical_id=vertical)
+
+    configs = registry.list_configs()
+    if not configs:
+        console.print(f"[yellow]No agents found for vertical '{vertical}'.[/]")
+        return
+
+    table = Table(title=f"Agent Status — {vertical}")
+    table.add_column("Agent ID", style="cyan")
+    table.add_column("Type", style="green")
+    table.add_column("Runs (7d)", style="white")
+    table.add_column("Success", style="green")
+    table.add_column("Failed", style="red")
+    table.add_column("Avg Duration", style="yellow")
+
+    for cfg in configs:
+        try:
+            stats = db.get_agent_stats(
+                vertical_id=vertical,
+                agent_id=cfg.agent_id,
+                days=7,
+            )
+            if stats:
+                total = stats.get("total_runs", 0)
+                success = stats.get("completed_runs", 0)
+                failed = stats.get("failed_runs", 0)
+                avg_ms = stats.get("avg_duration_ms", 0)
+                avg_str = f"{avg_ms / 1000:.1f}s" if avg_ms else "—"
+                table.add_row(
+                    cfg.agent_id, cfg.agent_type,
+                    str(total), str(success), str(failed), avg_str,
+                )
+            else:
+                table.add_row(
+                    cfg.agent_id, cfg.agent_type,
+                    "0", "0", "0", "—",
+                )
+        except Exception:
+            table.add_row(
+                cfg.agent_id, cfg.agent_type,
+                "[dim]?[/]", "[dim]?[/]", "[dim]?[/]", "[dim]?[/]",
+            )
+
+    console.print(table)
 
 
 if __name__ == "__main__":

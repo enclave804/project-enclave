@@ -1,0 +1,50 @@
+# Outreach Agent — Enclave Guard vertical
+#
+# Wraps the existing LangGraph pipeline (core/graph/) via
+# the strangler-fig adapter in core/agents/implementations/outreach_agent.py.
+#
+# Owns: lead enrichment, qualification, email drafting, compliance, sending.
+
+agent_id: outreach
+agent_type: outreach
+name: "Outreach Agent"
+description: "Automates B2B outreach for cybersecurity consulting — enriches, qualifies, drafts, and sends personalized emails to ICP-matching leads."
+enabled: true
+
+model:
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.5
+  max_tokens: 4096
+
+tools:
+  - name: apollo_search
+    type: builtin
+  - name: apollo_enrich
+    type: builtin
+  - name: tech_scanner
+    type: builtin
+  - name: send_email
+    type: builtin
+  - name: rag_search
+    type: builtin
+  - name: compliance_check
+    type: builtin
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - send_outreach
+
+schedule:
+  trigger: manual
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params (accessible via config.params in code)
+params:
+  daily_lead_limit: 25
+  duplicate_cooldown_days: 90
