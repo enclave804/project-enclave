@@ -3,59 +3,127 @@
 # Tenant #2: 3D Printing Services for Architecture Firms
 # Proves that the Sovereign Venture Engine supports completely
 # different businesses with ZERO code changes to core/.
+#
+# This file conforms to core.config.schema.VerticalConfig.
 
 vertical_id: print_biz
-name: "PrintBiz — 3D Printing Services"
-description: "B2B 3D printing and rapid prototyping for architecture firms."
+vertical_name: "PrintBiz — 3D Printing Services"
 industry: "3D Printing / Additive Manufacturing"
 
-# Company Info
-company:
-  name: "PrintBiz"
-  domain: "printbiz3d.com"
-  tagline: "From CAD to Reality in 48 Hours"
+business:
+  ticket_range: [500, 5000]
+  currency: USD
+  sales_cycle_days: 21
 
-# ICP (Ideal Customer Profile)
-icp:
-  target_industries:
-    - Architecture
-    - Interior Design
-    - Real Estate Development
-    - Urban Planning
-  target_titles:
-    - "Design Director"
-    - "Principal Architect"
-    - "Head of Design"
-    - "VP Operations"
-    - "Studio Manager"
-  target_seniorities:
-    - director
-    - vp
-    - c_suite
-    - manager
-  target_company_sizes:
-    - "11,50"
-    - "51,200"
-    - "201,500"
-  target_locations:
-    - "United States"
-    - "Canada"
+targeting:
+  ideal_customer_profile:
+    company_size: [10, 500]
+    industries:
+      - Architecture
+      - Interior Design
+      - Real Estate Development
+      - Urban Planning
+    signals:
+      - active_building_projects
+      - uses_cad_software
+      - recent_design_competition
+      - expanding_office_locations
+    disqualifiers:
+      - has_in_house_3d_printing
+      - less_than_10_employees
+      - no_design_department
 
-# Outreach Strategy
+  personas:
+    - id: design_director
+      title_patterns:
+        - "Design Director"
+        - "Principal Architect"
+        - "Head of Design"
+        - "Studio Manager"
+        - "Creative Director"
+      company_size: [10, 200]
+      approach: design_showcase
+
+    - id: vp_ops
+      title_patterns:
+        - "VP Operations"
+        - "COO"
+        - "Director of Operations"
+        - "Office Manager"
+      company_size: [50, 500]
+      approach: efficiency_pitch
+
 outreach:
-  sender_name: "PrintBiz Team"
-  sender_email: "hello@printbiz3d.com"
-  daily_lead_limit: 30
-  duplicate_cooldown_days: 60
+  email:
+    daily_limit: 30
+    warmup_days: 14
+    sending_domain: "mail.printbiz3d.com"
+    reply_to: "hello@printbiz3d.com"
+    sequences:
+      - name: design_showcase
+        steps: 3
+        delay_days: [0, 3, 7]
+      - name: efficiency_pitch
+        steps: 2
+        delay_days: [0, 5]
 
-# Value Proposition
-messaging:
-  pain_points:
-    - "Physical models take weeks to produce manually"
-    - "Client presentations lack tangible 3D context"
-    - "Iterating on architectural designs is expensive"
-  value_props:
-    - "CAD to 3D print in 48 hours"
-    - "Architectural-grade detail at 0.1mm resolution"
-    - "Bulk pricing for firms with recurring projects"
-  offer: "Free sample print of your next project"
+  compliance:
+    jurisdictions:
+      - US_CAN_SPAM
+      - CA_CASL
+    physical_address: "456 Maker Lane, San Francisco CA 94105"
+    exclude_countries: []
+
+enrichment:
+  sources:
+    - type: web_scraper
+      targets:
+        - company_website
+
+apollo:
+  api_key_env: APOLLO_API_KEY
+  daily_lead_pull: 30
+  filters:
+    person_titles:
+      - Design Director
+      - Principal Architect
+      - Head of Design
+      - VP Operations
+      - Studio Manager
+      - Creative Director
+    person_seniorities:
+      - director
+      - vp
+      - c_suite
+      - manager
+    organization_num_employees_ranges:
+      - "11,50"
+      - "51,200"
+      - "201,500"
+    person_locations:
+      - "United States"
+      - "Canada"
+
+rag:
+  chunk_types:
+    - company_intel
+    - outreach_result
+    - winning_pattern
+  learning_threshold: 100
+
+agent:
+  model_routing:
+    enrichment: claude-haiku-4-5-20250514
+    strategy: claude-sonnet-4-5-20250514
+    email_drafting: claude-sonnet-4-5-20250514
+    classification: claude-haiku-4-5-20250514
+    quarterly_review: claude-sonnet-4-5-20250514
+  temperature:
+    email_drafting: 0.7
+    analysis: 0.3
+    classification: 0.1
+
+pipeline:
+  duplicate_cooldown_days: 60
+  max_retries_per_node: 3
+  human_review_required: true

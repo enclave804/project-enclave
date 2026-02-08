@@ -12,7 +12,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -275,5 +275,4 @@ class VerticalConfig(BaseModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)

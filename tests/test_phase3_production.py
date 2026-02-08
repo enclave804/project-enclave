@@ -1038,23 +1038,29 @@ class TestPrintBizConfig:
             data = yaml.safe_load(f)
         assert "3D Printing" in data["industry"]
 
-    def test_has_icp(self, config_path):
+    def test_has_targeting(self, config_path):
+        """PrintBiz config conforms to VerticalConfig with targeting block."""
         with open(config_path) as f:
             data = yaml.safe_load(f)
-        assert "icp" in data
-        assert "Architecture" in data["icp"]["target_industries"]
+        assert "targeting" in data
+        assert "ideal_customer_profile" in data["targeting"]
+        industries = data["targeting"]["ideal_customer_profile"]["industries"]
+        assert "Architecture" in industries
 
-    def test_has_messaging(self, config_path):
+    def test_has_outreach(self, config_path):
+        """PrintBiz config has proper outreach block with email config."""
         with open(config_path) as f:
             data = yaml.safe_load(f)
-        assert "messaging" in data
-        assert len(data["messaging"]["value_props"]) > 0
+        assert "outreach" in data
+        assert "email" in data["outreach"]
+        assert data["outreach"]["email"]["daily_limit"] == 30
 
-    def test_company_info(self, config_path):
+    def test_has_business_config(self, config_path):
+        """PrintBiz config has proper business block."""
         with open(config_path) as f:
             data = yaml.safe_load(f)
-        assert data["company"]["name"] == "PrintBiz"
-        assert "printbiz3d.com" in data["company"]["domain"]
+        assert "business" in data
+        assert data["business"]["ticket_range"] == [500, 5000]
 
 
 class TestPrintBizAgentYAML:
@@ -1164,8 +1170,13 @@ class TestMultiTenancyIsolation:
         with open(pb_config) as f:
             pb = yaml.safe_load(f)
 
-        eg_industries = eg.get("icp", {}).get("target_industries", [])
-        pb_industries = pb.get("icp", {}).get("target_industries", [])
+        # Both configs now conform to VerticalConfig schema
+        eg_industries = eg.get("targeting", {}).get(
+            "ideal_customer_profile", {}
+        ).get("industries", [])
+        pb_industries = pb.get("targeting", {}).get(
+            "ideal_customer_profile", {}
+        ).get("industries", [])
 
         # They should target different industries
         assert set(eg_industries) != set(pb_industries)
