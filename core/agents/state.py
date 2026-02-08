@@ -178,3 +178,44 @@ class AppointmentAgentState(BaseAgentState, total=False):
     # ---- Follow-up ----
     follow_up_sequence_step: int
     next_follow_up_at: Optional[str]
+
+
+class ArchitectAgentState(BaseAgentState, total=False):
+    """
+    State for the Architect Agent — the meta-agent that drives Genesis.
+
+    Flow: gather_context → analyze_market → generate_blueprint →
+          human_review_blueprint → generate_configs → validate_configs →
+          request_credentials → launch
+
+    The Architect doesn't do sales work — it *hires* the workers.
+    """
+
+    # ---- Interview ----
+    conversation_id: str
+    interview_phase: str  # InterviewPhase value
+    business_context: dict[str, Any]  # Accumulating BusinessContext fields
+    questions_asked: list[str]  # Question IDs already asked
+    questions_remaining: int
+    interview_complete: bool
+
+    # ---- Blueprint ----
+    blueprint: Optional[dict[str, Any]]  # Serialized BusinessBlueprint
+    blueprint_approved: bool
+    blueprint_feedback: Optional[str]  # Human feedback on rejected blueprint
+    blueprint_version: int
+
+    # ---- Config Generation ----
+    generated_config_paths: list[str]
+    generated_vertical_id: Optional[str]
+    configs_validated: bool
+    validation_errors: list[str]
+
+    # ---- Credentials ----
+    required_credentials: list[dict[str, Any]]  # [{name, env_var, required, instructions}]
+    credentials_collected: bool
+
+    # ---- Launch ----
+    launch_status: Optional[str]  # pending, shadow_mode, live, failed
+    launch_errors: list[str]
+    launched_agent_ids: list[str]

@@ -19,5 +19,11 @@ Usage:
 """
 
 from core.genesis.blueprint import BusinessBlueprint, BusinessContext
+from core.genesis.interview import InterviewEngine, InterviewPhase
 
-__all__ = ["BusinessBlueprint", "BusinessContext"]
+__all__ = [
+    "BusinessBlueprint",
+    "BusinessContext",
+    "InterviewEngine",
+    "InterviewPhase",
+]
