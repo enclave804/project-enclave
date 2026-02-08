@@ -19,11 +19,15 @@ Usage:
 """
 
 from core.genesis.blueprint import BusinessBlueprint, BusinessContext
+from core.genesis.credential_manager import CredentialManager
 from core.genesis.interview import InterviewEngine, InterviewPhase
+from core.genesis.launcher import GenesisLauncher
 
 __all__ = [
     "BusinessBlueprint",
     "BusinessContext",
+    "CredentialManager",
+    "GenesisLauncher",
     "InterviewEngine",
     "InterviewPhase",
 ]

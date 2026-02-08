@@ -46,6 +46,13 @@ agent_app = typer.Typer(
     help="Agent framework commands — list, run, and inspect agents.",
 )
 app.add_typer(agent_app, name="agent")
+
+genesis_app = typer.Typer(
+    name="genesis",
+    help="Genesis Engine — launch new business verticals from scratch.",
+)
+app.add_typer(genesis_app, name="genesis")
+
 console = Console()
 
 # Configure logging
@@ -1335,6 +1342,231 @@ def agent_status(
             )
 
     console.print(table)
+
+
+# ── Genesis Engine Commands ─────────────────────────────────────────
+
+
+@genesis_app.command(name="start")
+def genesis_start(
+    vertical: str = typer.Argument(
+        ..., help="Vertical ID to launch (e.g. 'print_biz')"
+    ),
+    output_dir: str = typer.Option(
+        "verticals", help="Base directory for vertical outputs"
+    ),
+    skip_credentials: bool = typer.Option(
+        False, "--skip-credentials", help="Skip credential validation (testing only)"
+    ),
+):
+    """
+    Launch a new vertical's agent fleet in shadow mode.
+
+    Runs pre-flight checks (config validation, agent registration,
+    credentials) and brings agents online in shadow mode.
+    """
+    from core.genesis import GenesisLauncher, CredentialManager
+
+    console.print(Panel(
+        f"[bold cyan]Genesis Engine[/] — Launching vertical [bold]{vertical}[/]",
+        border_style="cyan",
+    ))
+
+    # Run pre-flight first
+    console.print("\n[bold]Running pre-flight checks...[/]\n")
+
+    cm = CredentialManager()
+    launcher = GenesisLauncher(credential_manager=cm)
+
+    preflight = launcher.preflight_check(vertical, output_dir)
+
+    # Display check results
+    for check in preflight.checks:
+        icon = "[green]✓[/]" if check["passed"] else "[red]✗[/]"
+        detail = f" — {check['detail']}" if check.get("detail") else ""
+        console.print(f"  {icon} {check['name']}{detail}")
+
+    if not preflight.passed:
+        failed = preflight.failed_checks
+        # Allow skipping credentials
+        critical = [
+            c for c in failed
+            if not (skip_credentials and c["name"] == "credentials_available")
+        ]
+        if critical:
+            console.print(Panel(
+                f"[red]Pre-flight failed with {len(critical)} error(s).[/]\n"
+                "Fix the issues above and try again.",
+                title="⚠ Launch Aborted",
+                border_style="red",
+            ))
+            raise typer.Exit(code=1)
+        else:
+            console.print(
+                "\n[yellow]Credential check skipped (--skip-credentials).[/]"
+            )
+
+    # Launch
+    console.print("\n[bold]Launching in shadow mode...[/]\n")
+
+    result = launcher.launch_vertical(
+        vertical,
+        output_dir,
+        skip_credential_check=skip_credentials,
+    )
+
+    if result.success:
+        console.print(Panel(
+            f"[bold green]Vertical launched successfully![/]\n\n"
+            f"  Status:  [cyan]{result.status}[/]\n"
+            f"  Agents:  [white]{len(result.agent_ids)}[/] "
+            f"({', '.join(result.agent_ids) or 'none'})\n"
+            + (f"\n  ⚠ Warnings:\n" + "\n".join(
+                f"    • {w}" for w in result.warnings
+            ) if result.warnings else ""),
+            title="🚀 Genesis Complete",
+            border_style="green",
+        ))
+    else:
+        console.print(Panel(
+            f"[red]Launch failed.[/]\n\n"
+            + "\n".join(f"  • {e}" for e in result.errors),
+            title="⚠ Launch Failed",
+            border_style="red",
+        ))
+        raise typer.Exit(code=1)
+
+
+@genesis_app.command(name="preflight")
+def genesis_preflight(
+    vertical: str = typer.Argument(
+        ..., help="Vertical ID to check"
+    ),
+    output_dir: str = typer.Option(
+        "verticals", help="Base directory for vertical outputs"
+    ),
+):
+    """
+    Run pre-flight checks without launching.
+
+    Validates the vertical's config, agents, types, and credentials.
+    """
+    from core.genesis import GenesisLauncher, CredentialManager
+
+    console.print(Panel(
+        f"[bold cyan]Genesis Pre-flight[/] — Checking vertical [bold]{vertical}[/]",
+        border_style="cyan",
+    ))
+
+    cm = CredentialManager()
+    launcher = GenesisLauncher(credential_manager=cm)
+    preflight = launcher.preflight_check(vertical, output_dir)
+
+    console.print()
+    for check in preflight.checks:
+        icon = "[green]✓[/]" if check["passed"] else "[red]✗[/]"
+        detail = f" — {check['detail']}" if check.get("detail") else ""
+        console.print(f"  {icon} {check['name']}{detail}")
+
+    console.print()
+    if preflight.passed:
+        console.print("[bold green]All checks passed.[/] Ready to launch.")
+    else:
+        failed = len(preflight.failed_checks)
+        console.print(f"[bold red]{failed} check(s) failed.[/]")
+        raise typer.Exit(code=1)
+
+
+@genesis_app.command(name="status")
+def genesis_status(
+    vertical: str = typer.Argument(
+        ..., help="Vertical ID to check status for"
+    ),
+):
+    """
+    Check the launch status of a vertical.
+
+    Shows the latest genesis session record from the database.
+    """
+    from core.genesis import GenesisLauncher
+
+    launcher = GenesisLauncher()
+    status = launcher.get_launch_status(vertical)
+
+    if status is None:
+        console.print(
+            f"[yellow]No launch record found for vertical '{vertical}'.[/]\n"
+            f"Use [bold]genesis start {vertical}[/] to launch."
+        )
+        return
+
+    console.print(Panel(
+        f"  Vertical:    [bold]{vertical}[/]\n"
+        f"  Status:      [cyan]{status.get('status', 'unknown')}[/]\n"
+        f"  Session:     [dim]{status.get('id', 'unknown')}[/]\n"
+        f"  Created:     {status.get('created_at', 'unknown')}\n"
+        f"  Updated:     {status.get('updated_at', 'unknown')}\n"
+        + (f"  Completed:   {status['completed_at']}\n"
+           if status.get('completed_at') else "")
+        + (f"  Error:       [red]{status['error_message']}[/]\n"
+           if status.get('error_message') else ""),
+        title=f"🔍 Genesis Status — {vertical}",
+        border_style="cyan",
+    ))
+
+
+@genesis_app.command(name="credentials")
+def genesis_credentials(
+    vertical: str = typer.Argument(
+        ..., help="Vertical ID to check credentials for"
+    ),
+):
+    """
+    Show credential status for a vertical.
+
+    Lists all required and optional credentials, and whether they're set.
+    """
+    from core.genesis import CredentialManager
+
+    cm = CredentialManager()
+    report = cm.get_credential_report(vertical)
+
+    table = Table(title=f"Credentials — {vertical}")
+    table.add_column("Env Variable", style="cyan")
+    table.add_column("Name", style="white")
+    table.add_column("Required", style="yellow")
+    table.add_column("Status", style="white")
+
+    for cred in report.credentials:
+        req = "[bold]required[/]" if cred.required else "[dim]optional[/]"
+        if cred.is_set:
+            status = "[green]✓ set[/]"
+        elif cred.required:
+            status = "[red]✗ missing[/]"
+        else:
+            status = "[dim]— not set[/]"
+
+        table.add_row(
+            cred.env_var_name,
+            cred.credential_name,
+            req,
+            status,
+        )
+
+    console.print(table)
+    console.print()
+
+    if report.all_required_set:
+        console.print(
+            f"[green]All required credentials set "
+            f"({report.total_set}/{len(report.credentials)}).[/]"
+        )
+    else:
+        missing = [c.env_var_name for c in report.missing_required]
+        console.print(
+            f"[red]Missing {len(missing)} required credential(s):[/] "
+            f"{', '.join(missing)}"
+        )
 
 
 if __name__ == "__main__":

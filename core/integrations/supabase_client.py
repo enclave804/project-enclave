@@ -958,3 +958,98 @@ class EnclaveDB:
         if vid:
             query = query.eq("vertical_id", vid)
         return query.execute().data
+
+    # ------------------------------------------------------------------
+    # Genesis Engine — Blueprints
+    # ------------------------------------------------------------------
+
+    def store_blueprint(
+        self,
+        blueprint_id: str,
+        vertical_id: str,
+        blueprint_data: dict,
+        status: str = "draft",
+        session_id: Optional[str] = None,
+    ) -> Optional[dict]:
+        """
+        Store or update a business blueprint via the store_blueprint RPC.
+
+        Uses the RPC function from migration 007 which handles
+        upserts, field extraction, and version bumping.
+
+        Args:
+            blueprint_id: UUID for the blueprint.
+            vertical_id: Which vertical this blueprint belongs to.
+            blueprint_data: Full serialized BusinessBlueprint dict.
+            status: Lifecycle status (draft, pending_review, approved, etc.).
+            session_id: Optional genesis session ID for tracking.
+
+        Returns:
+            The stored blueprint record, or None on failure.
+        """
+        try:
+            params: dict = {
+                "p_blueprint_id": blueprint_id,
+                "p_vertical_id": vertical_id,
+                "p_blueprint_data": blueprint_data,
+                "p_status": status,
+            }
+            if session_id:
+                params["p_session_id"] = session_id
+
+            result = self.client.rpc(
+                "store_blueprint", params
+            ).execute()
+            return result.data
+        except Exception as e:
+            logger.warning(f"Failed to store blueprint: {e}")
+            return None
+
+    def get_blueprint(
+        self,
+        vertical_id: str,
+    ) -> Optional[dict]:
+        """
+        Get the latest blueprint for a vertical.
+
+        Returns the most recent version, or None if no blueprint exists.
+        """
+        try:
+            result = (
+                self.client.table("business_blueprints")
+                .select("*")
+                .eq("vertical_id", vertical_id)
+                .order("version", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if result.data:
+                return result.data[0]
+        except Exception as e:
+            logger.warning(f"Failed to get blueprint: {e}")
+        return None
+
+    def get_blueprints_by_industry(
+        self,
+        industry: str,
+        status: str = "launched",
+        limit: int = 10,
+    ) -> list[dict]:
+        """
+        Get blueprints by industry for shared brain learning.
+
+        Uses the RPC function from migration 007.
+        """
+        try:
+            result = self.client.rpc(
+                "get_blueprints_by_industry",
+                {
+                    "p_industry": industry,
+                    "p_status": status,
+                    "p_limit": limit,
+                },
+            ).execute()
+            return result.data or []
+        except Exception as e:
+            logger.warning(f"Failed to get blueprints by industry: {e}")
+            return []
