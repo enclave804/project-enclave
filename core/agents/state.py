@@ -111,13 +111,25 @@ class OutreachAgentState(BaseAgentState, total=False):
 
 
 class SEOContentAgentState(BaseAgentState, total=False):
-    """State for the SEO Content Agent."""
+    """
+    State for the SEO Content Agent.
 
-    # ---- Research ----
+    Flow: research_competitors → draft_content → human_review → finalize_and_learn
+    """
+
+    # ---- Topic & Keywords ----
+    topic: str
     target_keywords: list[str]
     keyword_research_results: list[dict[str, Any]]
+
+    # ---- Competitor Research (Visual Cortex) ----
     competitor_content: list[dict[str, Any]]
+    competitor_analysis: list[dict[str, Any]]
+    # Each entry: {url, title, summary, design_score, content_gaps, screenshot_path}
     serp_analysis: dict[str, Any]
+
+    # ---- Shared Brain Context ----
+    outreach_insights: list[dict[str, Any]]
 
     # ---- Content ----
     content_type: str  # blog_post, landing_page, case_study
@@ -127,10 +139,15 @@ class SEOContentAgentState(BaseAgentState, total=False):
     seo_score: float
     meta_title: str
     meta_description: str
+    word_count: int
 
     # ---- Review ----
     content_approved: bool
+    human_edited_content: Optional[str]
     publish_url: Optional[str]
+
+    # ---- RLHF ----
+    rlhf_captured: bool
 
 
 class AppointmentAgentState(BaseAgentState, total=False):

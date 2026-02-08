@@ -46,11 +46,43 @@ class ModelType(str, Enum):
 
 
 class AgentModelConfig(BaseModel):
-    """LLM configuration for an agent."""
+    """
+    LLM configuration for an agent.
 
+    The "Kill Switch": change `provider` to "ollama" in any agent YAML
+    to run fully local if cloud APIs go down. Sovereignty preserved.
+
+    Example YAML:
+        model:
+          provider: ollama
+          model: llama3.1:70b
+          base_url: http://localhost:11434
+    """
+
+    provider: Literal["anthropic", "openai", "ollama"] = Field(
+        "anthropic",
+        description=(
+            "LLM provider: 'anthropic' (Claude), 'openai' (GPT), "
+            "'ollama' (local). Change to 'ollama' for full sovereignty."
+        ),
+    )
     model: str = "claude-sonnet-4-20250514"
     temperature: float = Field(0.5, ge=0.0, le=2.0)
     max_tokens: int = Field(4096, ge=100, le=128000)
+    base_url: Optional[str] = Field(
+        None,
+        description=(
+            "Custom API base URL. Required for Ollama "
+            "(e.g., 'http://localhost:11434'). Optional override for "
+            "OpenAI-compatible endpoints."
+        ),
+    )
+    context_window: int = Field(
+        128000,
+        ge=1024,
+        le=2000000,
+        description="Model context window size in tokens",
+    )
     model_type: ModelType = Field(
         ModelType.LLM,
         description=(

@@ -1,0 +1,53 @@
+# SEO Content Agent — Enclave Guard vertical
+#
+# Autonomous content generator that researches competitors, drafts
+# high-ranking blog posts, and learns from human edits via RLHF.
+#
+# Uses SovereignBrowser for Google research + Visual Cortex for
+# competitor screenshot analysis. Pulls shared insights from the
+# outreach agent to tailor messaging to what resonates.
+
+agent_id: seo_v1
+agent_type: seo_content
+name: "SEO Content Agent"
+description: "Researches competitors, analyzes their content and design, and drafts SEO-optimized blog posts that outrank them."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.7
+  max_tokens: 8192
+  context_window: 128000
+
+tools:
+  - rag_search
+
+browser_enabled: true
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual
+
+# System prompt for content generation
+system_prompt_path: "verticals/enclave_guard/prompts/agent_prompts/seo_system.md"
+
+# Safety & cost control
+max_consecutive_errors: 3
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  target_word_count: 1500
+  tone: "Authoritative, Technical"
+  content_type: blog_post
+  target_topics:
+    - cybersecurity assessment
+    - penetration testing
+    - SOC 2 compliance
+    - incident response
+    - zero trust architecture

@@ -158,6 +158,29 @@ class BrowserConfig(BaseModel):
         description="Send screenshots to LLM for visual understanding",
     )
 
+    # ─── Stealth & Proxy ("Invisible Wall") ─────────────────────
+    proxy_url: Optional[str] = Field(
+        None,
+        description=(
+            "Proxy server URL (e.g., 'http://user:pass@proxy:8080'). "
+            "Routes all browser traffic through the proxy for anonymity."
+        ),
+    )
+    stealth_mode: bool = Field(
+        True,
+        description=(
+            "Enable anti-bot evasion: disables automation detection flags, "
+            "randomizes user agent if user_agent_rotate is True."
+        ),
+    )
+    user_agent_rotate: bool = Field(
+        True,
+        description=(
+            "Rotate User-Agent on each session to avoid fingerprinting. "
+            "Only effective when stealth_mode is True."
+        ),
+    )
+
     # ─── Domain Restrictions ────────────────────────────────────
     allowed_domains: list[str] = Field(
         default_factory=list,
@@ -181,6 +204,16 @@ class BrowserConfig(BaseModel):
             "width": self.viewport_width,
             "height": self.viewport_height,
         }
+
+    def get_stealth_args(self) -> list[str]:
+        """Get Chromium launch args for anti-bot evasion."""
+        if not self.stealth_mode:
+            return []
+        return [
+            "--disable-blink-features=AutomationControlled",
+            "--disable-features=IsolateOrigins,site-per-process",
+            "--disable-infobars",
+        ]
 
     def to_session_kwargs(self, session_video_dir: Optional[Path] = None) -> dict[str, Any]:
         """
@@ -211,6 +244,13 @@ class BrowserConfig(BaseModel):
             kwargs["record_video_size"] = self.get_video_size()
             kwargs["record_video_framerate"] = self.video_framerate
 
+        # Stealth & Proxy
+        if self.proxy_url:
+            kwargs["proxy"] = {"server": self.proxy_url}
+        stealth_args = self.get_stealth_args()
+        if stealth_args:
+            kwargs["extra_chromium_args"] = stealth_args
+
         # Domain restrictions
         if self.allowed_domains:
             kwargs["allowed_domains"] = self.allowed_domains
@@ -228,11 +268,18 @@ class BrowserConfig(BaseModel):
             BROWSER_HEADLESS: "true"/"false" (default: "true")
             BROWSER_RECORD_VIDEO: "true"/"false" (default: "true")
             BROWSER_RECORDINGS_DIR: path (default: storage/recordings)
+            BROWSER_PROXY_URL: proxy URL (default: None)
+            BROWSER_STEALTH_MODE: "true"/"false" (default: "true")
         """
-        return cls(
-            headless=os.environ.get("BROWSER_HEADLESS", "true").lower() == "true",
-            record_video=os.environ.get("BROWSER_RECORD_VIDEO", "true").lower() == "true",
-            recordings_dir=Path(
+        kwargs: dict[str, Any] = {
+            "headless": os.environ.get("BROWSER_HEADLESS", "true").lower() == "true",
+            "record_video": os.environ.get("BROWSER_RECORD_VIDEO", "true").lower() == "true",
+            "recordings_dir": Path(
                 os.environ.get("BROWSER_RECORDINGS_DIR", str(DEFAULT_RECORDINGS_DIR))
             ),
-        )
+            "stealth_mode": os.environ.get("BROWSER_STEALTH_MODE", "true").lower() == "true",
+        }
+        proxy = os.environ.get("BROWSER_PROXY_URL")
+        if proxy:
+            kwargs["proxy_url"] = proxy
+        return cls(**kwargs)
