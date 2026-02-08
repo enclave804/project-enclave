@@ -1041,5 +1041,49 @@ def test_run(
     asyncio.run(_run())
 
 
+@app.command()
+def dashboard(
+    vertical: str = typer.Argument(
+        "enclave_guard", help="Vertical ID (default: enclave_guard)"
+    ),
+    port: int = typer.Option(8501, help="Streamlit server port"),
+):
+    """Launch the Streamlit dashboard for monitoring pipeline health."""
+    import subprocess
+    import shutil
+
+    dashboard_path = Path(__file__).parent / "dashboard.py"
+    if not dashboard_path.exists():
+        console.print("[red]dashboard.py not found in project root.[/]")
+        raise typer.Exit(1)
+
+    if not shutil.which("streamlit"):
+        console.print(Panel(
+            "[red]Streamlit is not installed.[/]\n\n"
+            "Install it with:\n"
+            "  [dim]pip install streamlit[/]",
+            title="⚠ Missing Dependency",
+            border_style="red",
+        ))
+        raise typer.Exit(1)
+
+    console.print(Panel(
+        f"[cyan]Launching dashboard for {vertical}[/]\n\n"
+        f"URL: [bold]http://localhost:{port}[/bold]\n"
+        f"Press Ctrl+C to stop.",
+        title="🛡️ Enclave Dashboard",
+        border_style="cyan",
+    ))
+
+    subprocess.run(
+        [
+            "streamlit", "run", str(dashboard_path),
+            "--server.port", str(port),
+            "--server.headless", "true",
+            "--browser.gatherUsageStats", "false",
+        ],
+    )
+
+
 if __name__ == "__main__":
     app()

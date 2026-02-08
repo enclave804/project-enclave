@@ -386,3 +386,73 @@ class EnclaveDB:
             .execute()
         )
         return result.count or 0
+
+    # ------------------------------------------------------------------
+    # Dashboard Queries
+    # ------------------------------------------------------------------
+
+    def count_companies(self) -> int:
+        """Count total companies for this vertical."""
+        result = (
+            self.client.table("companies")
+            .select("id", count="exact")
+            .eq("vertical_id", self.vertical_id)
+            .execute()
+        )
+        return result.count or 0
+
+    def count_contacts(self) -> int:
+        """Count total contacts for this vertical."""
+        result = (
+            self.client.table("contacts")
+            .select("id", count="exact")
+            .eq("vertical_id", self.vertical_id)
+            .execute()
+        )
+        return result.count or 0
+
+    def count_opportunities(self) -> int:
+        """Count total opportunities for this vertical."""
+        result = (
+            self.client.table("opportunities")
+            .select("id", count="exact")
+            .eq("vertical_id", self.vertical_id)
+            .execute()
+        )
+        return result.count or 0
+
+    def get_pipeline_runs(self, limit: int = 50) -> list[dict]:
+        """Get recent pipeline runs for audit/dashboard display."""
+        return (
+            self.client.table("pipeline_runs")
+            .select("*")
+            .eq("vertical_id", self.vertical_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        ).data
+
+    def get_knowledge_stats(self) -> dict[str, int]:
+        """Get knowledge chunk counts grouped by type."""
+        result = (
+            self.client.table("knowledge_chunks")
+            .select("chunk_type")
+            .eq("vertical_id", self.vertical_id)
+            .execute()
+        )
+        counts: dict[str, int] = {}
+        for row in result.data:
+            ct = row.get("chunk_type", "unknown")
+            counts[ct] = counts.get(ct, 0) + 1
+        return counts
+
+    def get_recent_outreach(self, limit: int = 20) -> list[dict]:
+        """Get recent outreach events with contact info for dashboard."""
+        return (
+            self.client.table("outreach_events")
+            .select("*, contacts(name, email, title)")
+            .eq("vertical_id", self.vertical_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        ).data
