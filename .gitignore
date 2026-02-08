@@ -33,6 +33,9 @@ docker-compose.override.yml
 *.log
 logs/
 
+# Sandbox logs (tool interception in non-production)
+sandbox_logs/*.jsonl
+
 # LangGraph checkpoints
 .checkpoints.db
 

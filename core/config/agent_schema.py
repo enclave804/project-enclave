@@ -3,11 +3,17 @@ Pydantic config models for agent definitions.
 
 Each agent is defined by a YAML file in verticals/{vertical_id}/agents/.
 New agent = YAML config + @register_agent_type decorator on implementation class.
+
+Architecture patterns configured here:
+- Neural Router: cheap local models classify intent before waking the LLM
+- Refinement Loop: agents critique and refine their own output
+- Sandbox Protocol: dangerous tools are intercepted in non-production envs
 """
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from enum import Enum
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -24,12 +30,26 @@ class AgentToolConfig(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
+class ModelType(str, Enum):
+    """Model type for routing decisions."""
+
+    LLM = "llm"
+    LOCAL_CLASSIFICATION = "local_classification"
+
+
 class AgentModelConfig(BaseModel):
     """LLM configuration for an agent."""
 
     model: str = "claude-sonnet-4-20250514"
     temperature: float = Field(0.5, ge=0.0, le=2.0)
     max_tokens: int = Field(4096, ge=100, le=128000)
+    model_type: ModelType = Field(
+        ModelType.LLM,
+        description=(
+            "Model type: 'llm' for full LLM calls, "
+            "'local_classification' for cheap local classifiers (BERT/YOLO)"
+        ),
+    )
 
 
 class HumanGateConfig(BaseModel):
@@ -57,6 +77,98 @@ class AgentScheduleConfig(BaseModel):
     )
     cron: Optional[str] = None
     event_source: Optional[str] = None
+
+
+class RoutingConfig(BaseModel):
+    """
+    Neural Router configuration — cheap intent classification before LLM.
+
+    The router intercepts incoming tasks and classifies intent using a
+    small, fast model (e.g., BERT). Based on the classified intent, the
+    router can short-circuit (skip the expensive LLM entirely) or route
+    to a specific handler.
+
+    Example YAML:
+        routing:
+          enabled: true
+          model_type: local_classification
+          intent_actions:
+            out_of_office: sleep
+            spam: discard
+            unsubscribe: remove_contact
+          fallback_action: proceed
+    """
+
+    enabled: bool = Field(
+        False,
+        description="Enable the neural router (requires a trained classifier)",
+    )
+    model_type: ModelType = Field(
+        ModelType.LOCAL_CLASSIFICATION,
+        description="Model type for intent classification",
+    )
+    intent_actions: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Mapping of classified intent -> action. "
+            "Actions: 'proceed' (wake LLM), 'sleep' (skip), "
+            "'discard' (drop task), or a custom handler name"
+        ),
+    )
+    fallback_action: str = Field(
+        "proceed",
+        description="Action when intent doesn't match any route (default: proceed to LLM)",
+    )
+    confidence_threshold: float = Field(
+        0.8,
+        ge=0.0,
+        le=1.0,
+        description="Minimum classification confidence to trust the router's decision",
+    )
+
+
+class RefinementConfig(BaseModel):
+    """
+    Self-correction loop — agents critique and refine their own output.
+
+    When enabled, the agent's output passes through a critic step that
+    evaluates quality against a rubric. If the output fails the rubric,
+    it loops back for refinement up to max_iterations times.
+
+    Example YAML:
+        refinement:
+          enabled: true
+          critic_prompt: "Rate this email draft 1-10 for professionalism,
+            relevance, and compliance. If below 7, suggest specific improvements."
+          max_iterations: 2
+    """
+
+    enabled: bool = Field(
+        False,
+        description="Enable the self-correction refinement loop",
+    )
+    critic_prompt: str = Field(
+        "",
+        description=(
+            "Rubric/prompt for the critic to evaluate agent output. "
+            "Should describe what 'good' looks like and when to refine."
+        ),
+    )
+    max_iterations: int = Field(
+        1,
+        ge=1,
+        le=5,
+        description="Maximum refinement iterations before accepting output",
+    )
+    quality_threshold: float = Field(
+        0.7,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Minimum quality score (0-1) from critic to accept output. "
+            "Below this triggers another refinement iteration."
+        ),
+    )
 
 
 class AgentInstanceConfig(BaseModel):
@@ -88,6 +200,10 @@ class AgentInstanceConfig(BaseModel):
     schedule: AgentScheduleConfig = Field(default_factory=AgentScheduleConfig)
 
     system_prompt_path: Optional[str] = None
+
+    # --- Neural Router & Refinement Loop ---
+    routing: RoutingConfig = Field(default_factory=RoutingConfig)
+    refinement: RefinementConfig = Field(default_factory=RefinementConfig)
 
     # --- Safety & Cost Control ---
     max_consecutive_errors: int = Field(
