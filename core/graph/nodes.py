@@ -503,12 +503,29 @@ SUBJECT: [subject line]
         model = self.config.agent.model_routing.email_drafting
         temperature = self.config.agent.temperature.email_drafting
 
-        response = self.llm.messages.create(
-            model=model,
-            max_tokens=500,
-            temperature=temperature,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        try:
+            response = self.llm.messages.create(
+                model=model,
+                max_tokens=500,
+                temperature=temperature,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        except Exception as e:
+            error_msg = str(e)
+            # Handle model not found — likely a config issue with model name
+            if "not_found" in error_msg or "404" in error_msg:
+                logger.error(
+                    f"Model '{model}' not found. Check agent.model_routing.email_drafting "
+                    f"in your vertical config. Error: {error_msg[:200]}"
+                )
+                updates["error"] = f"Model not found: {model}"
+            else:
+                logger.error(f"Anthropic API error during drafting: {error_msg[:200]}")
+                updates["error"] = f"LLM error: {error_msg[:200]}"
+            updates["error_node"] = "draft_outreach"
+            updates["draft_email_subject"] = "[DRAFT FAILED]"
+            updates["draft_email_body"] = f"API error: {error_msg[:300]}"
+            return updates
 
         # Guard against empty or unexpected response from Claude
         if not response.content or not hasattr(response.content[0], "text"):

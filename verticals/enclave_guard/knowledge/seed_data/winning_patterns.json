@@ -1,0 +1,77 @@
+[
+  {
+    "type": "winning_pattern",
+    "pattern_type": "vulnerability_alert",
+    "persona": "cto_small",
+    "industry": "fintech",
+    "description": "CTOs at small fintech companies respond best to specific, technical findings rather than generic security warnings. Mentioning exact technologies (e.g., 'your WordPress 5.x installation') and tying findings to business impact (compliance, customer trust) gets the highest reply rates.",
+    "win_rate": 0.18,
+    "sample_size": 50,
+    "key_elements": [
+      "Specific technology references from their stack",
+      "Business impact framing (not just technical risk)",
+      "Low-commitment CTA (15-min call)",
+      "Peer tone, not vendor pitch"
+    ]
+  },
+  {
+    "type": "winning_pattern",
+    "pattern_type": "business_risk",
+    "persona": "ceo_small",
+    "industry": "healthcare",
+    "description": "Healthcare CEOs prioritize business continuity and regulatory risk over technical details. Lead with the cost of a breach ($10.9M average in healthcare) and tie to their growth stage. Avoid jargon — frame security as a business enabler, not a cost center.",
+    "win_rate": 0.14,
+    "sample_size": 40,
+    "key_elements": [
+      "Breach cost statistics specific to their industry",
+      "Growth-stage framing (security enables scale)",
+      "Reference to peer companies who benefited",
+      "Simple, non-technical language"
+    ]
+  },
+  {
+    "type": "winning_pattern",
+    "pattern_type": "compliance_gap",
+    "persona": "ciso",
+    "industry": "legal",
+    "description": "CISOs at legal tech firms are sophisticated buyers who dislike generic pitches. They respond to specific compliance framework references (SOC2, ISO 27001) and evidence of domain expertise in legal/regulatory environments. Acknowledging their existing security knowledge while offering specialized perspective works best.",
+    "win_rate": 0.12,
+    "sample_size": 35,
+    "key_elements": [
+      "Specific compliance framework mentions",
+      "Respect for their existing security knowledge",
+      "Legal industry-specific risk framing",
+      "Focus on gaps between legacy and modern requirements"
+    ]
+  },
+  {
+    "type": "winning_pattern",
+    "pattern_type": "vulnerability_alert",
+    "persona": "cto_small",
+    "industry": "saas",
+    "description": "SaaS CTOs are typically security-aware and respond to findings that demonstrate genuine research. The most effective emails cite specific technologies found on their domain (from BuiltWith/Shodan data) and connect findings to their customer-facing obligations.",
+    "win_rate": 0.15,
+    "sample_size": 45,
+    "key_elements": [
+      "Demonstrate real research (not a mass email)",
+      "Connect security to customer trust/retention",
+      "Mention specific SaaS compliance needs (SOC2)",
+      "Short email — under 100 words performs best"
+    ]
+  },
+  {
+    "type": "winning_pattern",
+    "pattern_type": "compliance_gap",
+    "persona": "ciso",
+    "industry": "insurance",
+    "description": "Insurance CISOs face unique regulatory pressures (state-by-state requirements, NAIC model laws). They appreciate outreach that acknowledges regulatory complexity and offers practical, implementation-focused help rather than broad assessments.",
+    "win_rate": 0.11,
+    "sample_size": 30,
+    "key_elements": [
+      "Reference specific insurance regulations",
+      "Acknowledge multi-state compliance complexity",
+      "Offer practical gap analysis, not broad audit",
+      "Industry credibility signals"
+    ]
+  }
+]

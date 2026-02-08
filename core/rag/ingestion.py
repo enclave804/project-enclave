@@ -262,6 +262,7 @@ class KnowledgeIngester:
 
             for item in items:
                 chunk_type = item.get("type", "vulnerability_knowledge")
+
                 if chunk_type == "vulnerability_knowledge":
                     await self.ingest_vulnerability_knowledge(
                         title=item["title"],
@@ -271,6 +272,43 @@ class KnowledgeIngester:
                         remediation=item.get("remediation"),
                     )
                     count += 1
+
+                elif chunk_type == "winning_pattern":
+                    await self.ingest_winning_pattern(
+                        pattern_type=item.get("pattern_type", ""),
+                        pattern_description=item.get("description", ""),
+                        win_rate=item.get("win_rate", 0.0),
+                        sample_size=item.get("sample_size", 0),
+                        target_persona=item.get("persona", ""),
+                        industry=item.get("industry", ""),
+                    )
+                    count += 1
+
+                elif chunk_type == "objection_handling":
+                    # Ingest as a generic knowledge chunk
+                    content = (
+                        f"Objection: {item.get('objection', '')}\n"
+                        f"Response strategy: {item.get('response_strategy', '')}\n"
+                        f"Effectiveness: {item.get('effectiveness_score', 0):.0%}\n"
+                        f"Common personas: {', '.join(item.get('common_personas', []))}"
+                    )
+                    embedding = await self.embedder.embed_text(content)
+                    self.db.store_knowledge_chunk(
+                        content=content,
+                        embedding=embedding,
+                        chunk_type="objection_handling",
+                        metadata={
+                            "objection": item.get("objection", ""),
+                            "effectiveness_score": item.get("effectiveness_score", 0),
+                            "common_personas": item.get("common_personas", []),
+                        },
+                        source_type="manual",
+                    )
+                    logger.info(f"Ingested objection handling: {item.get('objection', '')[:60]}")
+                    count += 1
+
+                else:
+                    logger.warning(f"Unknown seed data type: {chunk_type}, skipping")
 
         logger.info(f"Loaded {count} seed knowledge chunks")
         return count

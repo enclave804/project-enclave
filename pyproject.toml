@@ -1,0 +1,16 @@
+[project]
+name = "project-enclave"
+version = "0.1.0"
+description = "B2B sales automation platform - AI-powered sales pipeline"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short -q"
+filterwarnings = [
+    "ignore::DeprecationWarning:pyiceberg.*",
+    "ignore::DeprecationWarning:pydantic.*",
+]

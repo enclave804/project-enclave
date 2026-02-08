@@ -1,0 +1,37 @@
+[
+  {
+    "type": "objection_handling",
+    "objection": "We already have a security team / internal security",
+    "response_strategy": "Acknowledge their team's capabilities. Position Enclave Guard as a complement, not a replacement. Focus on the value of an external perspective: 'Your team knows your systems best. External audits catch the blind spots that familiarity creates — it's why even the big four hire outside auditors.'",
+    "effectiveness_score": 0.7,
+    "common_personas": ["ciso", "cto_small"]
+  },
+  {
+    "type": "objection_handling",
+    "objection": "We don't have the budget right now",
+    "response_strategy": "Reframe cost vs. risk. Use industry breach statistics. Offer a free initial assessment or scaled-down engagement: 'Totally understand. Most of our clients start with a focused 1-week assessment at $5K — just enough to know where you stand. Cheaper than discovering gaps during a client audit.'",
+    "effectiveness_score": 0.6,
+    "common_personas": ["ceo_small", "cto_small"]
+  },
+  {
+    "type": "objection_handling",
+    "objection": "We're too small to be targeted",
+    "response_strategy": "Counter with data: 43% of cyberattacks target small businesses. Smaller companies are often used as stepping stones to larger targets (supply chain attacks). Frame security as a growth enabler: 'Your next enterprise client will ask for your security posture during due diligence.'",
+    "effectiveness_score": 0.75,
+    "common_personas": ["ceo_small"]
+  },
+  {
+    "type": "objection_handling",
+    "objection": "We already have an MSSP / security vendor",
+    "response_strategy": "Don't compete directly. Position as a one-time assessment that validates their current vendor's work: 'That's great — having coverage is step one. We often work alongside MSSPs to provide a second-opinion audit. Think of it like getting a second medical opinion — your MSSP handles the day-to-day, we validate the strategy.'",
+    "effectiveness_score": 0.5,
+    "common_personas": ["ciso", "cto_small"]
+  },
+  {
+    "type": "objection_handling",
+    "objection": "Can you send me more information?",
+    "response_strategy": "This is often a soft deflection. Respond with a specific, personalized resource rather than a generic brochure. Offer a brief custom report on their public security posture: 'Happy to — instead of a generic deck, I'll put together a quick summary of what I found on your public infrastructure. More relevant than a brochure.'",
+    "effectiveness_score": 0.65,
+    "common_personas": ["cto_small", "ceo_small", "ciso"]
+  }
+]

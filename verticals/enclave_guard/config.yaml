@@ -166,11 +166,11 @@ rag:
 
 agent:
   model_routing:
-    enrichment: claude-haiku-4-5-20250514
-    strategy: claude-sonnet-4-5-20250514
-    email_drafting: claude-sonnet-4-5-20250514
-    classification: claude-haiku-4-5-20250514
-    quarterly_review: claude-opus-4-5-20250514
+    enrichment: claude-3-haiku-20240307
+    strategy: claude-sonnet-4-20250514
+    email_drafting: claude-sonnet-4-20250514
+    classification: claude-3-haiku-20240307
+    quarterly_review: claude-sonnet-4-20250514
   temperature:
     email_drafting: 0.7
     analysis: 0.3

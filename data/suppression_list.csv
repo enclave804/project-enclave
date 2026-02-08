@@ -1,0 +1,4 @@
+# Suppression list for Enclave Guard outreach
+# One email per line. Entries are checked before any outreach is sent.
+# Add emails here for manual suppression (bounces, unsubscribes, do-not-contact).
+# Database suppression list is also checked — this file is an additional layer.
