@@ -44,3 +44,4 @@ sandbox_logs/*.jsonl
 
 # Claude Code
 .claude/
+.audio_cache/

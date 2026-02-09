@@ -1,16 +1,16 @@
 """
 FastMCP server for the Sovereign Venture Engine.
 
-Exposes Apollo, Supabase/RAG, Email, Calendar, System, and Commerce tools
-to agents via the Model Context Protocol (MCP). Each tool is a thin wrapper
-around the existing integration clients.
+Exposes Apollo, Supabase/RAG, Email, Calendar, System, Commerce, and Voice
+tools to agents via the Model Context Protocol (MCP). Each tool is a thin
+wrapper around the existing integration clients.
 
 Entry points:
     python -m core.mcp           # stdio transport (for agent integration)
     create_mcp_server()          # programmatic use (for testing)
 
 Architecture:
-    FastMCP server
+    FastMCP server (29 tools)
     +-- search_leads()                -> ApolloClient.search_people()
     +-- enrich_company()              -> ApolloClient.enrich_company()
     +-- search_knowledge()            -> EnclaveDB.search_knowledge() via embedder
@@ -34,6 +34,12 @@ Architecture:
     +-- stripe_create_payment_link()  -> CommerceClient.create_payment_link()
     +-- stripe_check_payment()        -> CommerceClient.check_payment()
     +-- stripe_process_refund()       -> CommerceClient.process_refund() [@sandboxed_tool]
+    +-- send_sms()                    -> Twilio SMS API                  [@sandboxed_tool]
+    +-- make_call()                   -> Synthesize audio → Twilio call  [@sandboxed_tool]
+    +-- get_call_logs()               -> Twilio call history
+    +-- get_sms_logs()                -> Twilio SMS history
+    +-- buy_phone_number()            -> Twilio phone number purchase    [@sandboxed_tool]
+    +-- transcribe_audio()            -> Whisper API (via Transcriber)
 """
 
 from __future__ import annotations
@@ -141,12 +147,29 @@ def create_mcp_server(
     mcp.add_tool(Tool.from_function(stripe_check_payment))
     mcp.add_tool(Tool.from_function(stripe_process_refund))
 
+    # ─── Voice & SMS Tools (send/buy sandboxed) ──────────────────
+    from core.mcp.tools.voice_tools import (
+        send_sms,
+        make_call,
+        get_call_logs,
+        get_sms_logs,
+        buy_phone_number,
+        transcribe_audio,
+    )
+
+    mcp.add_tool(Tool.from_function(send_sms))
+    mcp.add_tool(Tool.from_function(make_call))
+    mcp.add_tool(Tool.from_function(get_call_logs))
+    mcp.add_tool(Tool.from_function(get_sms_logs))
+    mcp.add_tool(Tool.from_function(buy_phone_number))
+    mcp.add_tool(Tool.from_function(transcribe_audio))
+
     logger.info(
         "mcp_server_created",
         extra={
             "server_name": name,
             "vertical_id": vertical_id,
-            "tool_count": 23,
+            "tool_count": 29,
         },
     )
 

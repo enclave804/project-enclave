@@ -317,3 +317,52 @@ class CommerceAgentState(BaseAgentState, total=False):
     # ---- Report ----
     report_summary: str
     report_generated_at: str
+
+
+class VoiceAgentState(BaseAgentState, total=False):
+    """
+    State for the Voice Agent — the Receptionist / Sales Rep.
+
+    Flow: receive → transcribe → classify_intent →
+          [handle_sales | handle_support | handle_urgent] →
+          draft_response → human_review → execute → report → END
+
+    The Voice Agent handles inbound calls, voicemails, and SMS.
+    """
+
+    # ---- Channel Info ----
+    channel: str                        # "voicemail", "sms", "unknown"
+    caller_number: str
+    caller_name: str
+    caller_company: str
+    recording_url: str
+    sms_body: str
+    call_sid: str
+    message_sid: str
+
+    # ---- Transcription ----
+    transcript: str                     # Transcribed text (from Whisper or SMS body)
+    transcription_source: str           # "whisper_api", "sms_body", "mock", "none"
+    transcription_error: str
+
+    # ---- Intent Classification ----
+    classified_intent: str              # "sales", "support", "urgent", "unknown"
+    intent_confidence: float
+    intent_reasoning: str
+    intent_summary: str
+
+    # ---- Response ----
+    response_type: str                  # "sms_reply", "schedule_callback", "escalate", "create_lead"
+    urgency_level: int                  # 1-5, 5 = most urgent
+    draft_sms_reply: str
+    draft_callback_script: str
+
+    # ---- Actions ----
+    actions_planned: list[dict[str, Any]]
+    actions_approved: bool
+    actions_executed: list[dict[str, Any]]
+    actions_failed: list[dict[str, Any]]
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str

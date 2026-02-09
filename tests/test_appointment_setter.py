@@ -458,8 +458,8 @@ class TestBookMeetingSlotSandbox:
 class TestMCPServerCalendarRegistration:
     """Tests that calendar tools are registered on the MCP server."""
 
-    def test_server_has_23_tools(self):
-        """MCP server should now have 23 registered tools (10 original + 7 system + 6 commerce)."""
+    def test_server_has_29_tools(self):
+        """MCP server should now have 29 registered tools (10 original + 7 system + 6 commerce + 6 voice)."""
         from core.mcp.server import create_mcp_server
 
         server = create_mcp_server()

@@ -1,8 +1,8 @@
 """
-Webhook receiver for external commerce events.
+Webhook receiver for external commerce and voice events.
 
-Listens for incoming webhooks from Shopify and Stripe,
-validates HMAC signatures, and dispatches events to the EventBus.
+Listens for incoming webhooks from Shopify, Stripe, and Twilio,
+validates signatures, and dispatches events to the EventBus.
 
 This is a FastAPI router — mount it on your main app:
 
@@ -14,10 +14,14 @@ Endpoints:
     POST /webhooks/shopify/orders/paid     -> order_paid event
     POST /webhooks/stripe/payment/success  -> payment_received event
     POST /webhooks/stripe/payment/failed   -> payment_failed event
+    POST /webhooks/twilio/voice            -> inbound_call event (returns TwiML)
+    POST /webhooks/twilio/sms              -> sms_received event
+    POST /webhooks/twilio/recording        -> voice_message_received event
 
 Security:
     - Shopify HMAC-SHA256 signature verification (SHOPIFY_WEBHOOK_SECRET)
     - Stripe signature verification (STRIPE_WEBHOOK_SECRET)
+    - Twilio request validation via X-Twilio-Signature (TWILIO_AUTH_TOKEN)
     - Falls back to accepting all webhooks if secrets are not set (dev mode)
 """
 
@@ -110,6 +114,49 @@ def verify_stripe_signature(
     except Exception as e:
         logger.error("stripe_signature_verification_failed", extra={"error": str(e)})
         return False
+
+
+def verify_twilio_signature(
+    url: str,
+    params: dict[str, str],
+    signature: str,
+    auth_token: Optional[str] = None,
+) -> bool:
+    """
+    Verify a Twilio webhook request signature.
+
+    Twilio signs requests using HMAC-SHA1 of (URL + sorted POST params).
+
+    Args:
+        url: Full URL that Twilio sent the request to.
+        params: POST form parameters from the request.
+        signature: Value of X-Twilio-Signature header.
+        auth_token: Twilio Auth Token. Falls back to TWILIO_AUTH_TOKEN env var.
+
+    Returns:
+        True if signature is valid, False otherwise.
+    """
+    auth_token = auth_token or os.environ.get("TWILIO_AUTH_TOKEN", "")
+    if not auth_token:
+        logger.warning("twilio_auth_token_not_set: accepting webhook without verification")
+        return True
+
+    import base64
+
+    # Twilio signature = HMAC-SHA1(auth_token, url + sorted key=value pairs)
+    data = url
+    for key in sorted(params.keys()):
+        data += key + params[key]
+
+    computed = base64.b64encode(
+        hmac.new(
+            auth_token.encode("utf-8"),
+            data.encode("utf-8"),
+            hashlib.sha1,
+        ).digest()
+    ).decode("utf-8")
+
+    return hmac.compare_digest(computed, signature)
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +383,199 @@ class WebhookProcessor:
             "tasks_dispatched": len(tasks_created),
         }
 
+    def process_twilio_inbound_call(
+        self,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Process an inbound Twilio voice call webhook.
+
+        Returns TwiML instructions: greet caller, then record a message.
+        Dispatches 'inbound_call' event to EventBus.
+        """
+        caller = payload.get("From", payload.get("Caller", "unknown"))
+        called = payload.get("To", payload.get("Called", "unknown"))
+        call_sid = payload.get("CallSid", "unknown")
+        call_status = payload.get("CallStatus", "ringing")
+
+        event_data = {
+            "call_sid": call_sid,
+            "caller": caller,
+            "called": called,
+            "call_status": call_status,
+            "direction": "inbound",
+            "source": "twilio_webhook",
+            "received_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        self._received_events.append({
+            "event_type": "inbound_call",
+            "data": event_data,
+        })
+
+        tasks_created = []
+        if self.event_bus:
+            tasks_created = self.event_bus.dispatch(
+                event_type="inbound_call",
+                payload=event_data,
+                source_agent_id="twilio_webhook",
+            )
+
+        logger.info(
+            "webhook_inbound_call",
+            extra={
+                "call_sid": call_sid[:16],
+                "caller": caller[-4:] if len(caller) >= 4 else caller,
+                "tasks_dispatched": len(tasks_created),
+            },
+        )
+
+        # Generate TwiML response: greet + record
+        greeting = os.environ.get(
+            "VOICE_GREETING",
+            "Thank you for calling. Please leave a message after the beep "
+            "and we will get back to you shortly."
+        )
+        twiml = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            "<Response>"
+            f"<Say voice=\"alice\">{greeting}</Say>"
+            "<Record maxLength=\"120\" "
+            "action=\"/webhooks/twilio/recording\" "
+            "transcribe=\"false\" />"
+            "<Say>We did not receive a recording. Goodbye.</Say>"
+            "</Response>"
+        )
+
+        return {
+            "status": "received",
+            "event_type": "inbound_call",
+            "call_sid": call_sid,
+            "tasks_dispatched": len(tasks_created),
+            "twiml": twiml,
+        }
+
+    def process_twilio_sms_received(
+        self,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Process an inbound Twilio SMS webhook.
+
+        Dispatches 'sms_received' event to EventBus.
+        """
+        from_number = payload.get("From", "unknown")
+        to_number = payload.get("To", "unknown")
+        body = payload.get("Body", "")
+        message_sid = payload.get("MessageSid", payload.get("SmsSid", "unknown"))
+        num_media = int(payload.get("NumMedia", 0))
+
+        event_data = {
+            "message_sid": message_sid,
+            "from_number": from_number,
+            "to_number": to_number,
+            "body": body,
+            "num_media": num_media,
+            "direction": "inbound",
+            "source": "twilio_webhook",
+            "received_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        self._received_events.append({
+            "event_type": "sms_received",
+            "data": event_data,
+        })
+
+        tasks_created = []
+        if self.event_bus:
+            tasks_created = self.event_bus.dispatch(
+                event_type="sms_received",
+                payload=event_data,
+                source_agent_id="twilio_webhook",
+            )
+
+        logger.info(
+            "webhook_sms_received",
+            extra={
+                "message_sid": message_sid[:16],
+                "from": from_number[-4:] if len(from_number) >= 4 else from_number,
+                "body_length": len(body),
+                "tasks_dispatched": len(tasks_created),
+            },
+        )
+
+        # TwiML response (empty — no auto-reply)
+        twiml = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            "<Response></Response>"
+        )
+
+        return {
+            "status": "received",
+            "event_type": "sms_received",
+            "message_sid": message_sid,
+            "body_preview": body[:100],
+            "tasks_dispatched": len(tasks_created),
+            "twiml": twiml,
+        }
+
+    def process_twilio_recording(
+        self,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Process a Twilio recording completion webhook.
+
+        Dispatches 'voice_message_received' event with recording URL
+        for later transcription by the VoiceAgent.
+        """
+        call_sid = payload.get("CallSid", "unknown")
+        recording_sid = payload.get("RecordingSid", "unknown")
+        recording_url = payload.get("RecordingUrl", "")
+        recording_duration = int(payload.get("RecordingDuration", 0))
+        caller = payload.get("From", payload.get("Caller", "unknown"))
+
+        event_data = {
+            "call_sid": call_sid,
+            "recording_sid": recording_sid,
+            "recording_url": recording_url,
+            "recording_duration": recording_duration,
+            "caller": caller,
+            "source": "twilio_webhook",
+            "received_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        self._received_events.append({
+            "event_type": "voice_message_received",
+            "data": event_data,
+        })
+
+        tasks_created = []
+        if self.event_bus:
+            tasks_created = self.event_bus.dispatch(
+                event_type="voice_message_received",
+                payload=event_data,
+                source_agent_id="twilio_webhook",
+            )
+
+        logger.info(
+            "webhook_recording_received",
+            extra={
+                "call_sid": call_sid[:16],
+                "recording_sid": recording_sid[:16],
+                "duration": recording_duration,
+                "tasks_dispatched": len(tasks_created),
+            },
+        )
+
+        return {
+            "status": "received",
+            "event_type": "voice_message_received",
+            "recording_sid": recording_sid,
+            "recording_duration": recording_duration,
+            "tasks_dispatched": len(tasks_created),
+        }
+
     @property
     def received_events(self) -> list[dict[str, Any]]:
         """Return all events received (useful for testing)."""
@@ -419,6 +659,53 @@ def create_webhook_router(event_bus: Any = None) -> Any:
 
         payload = json.loads(body)
         result = processor.process_stripe_payment_failed(payload)
+        return result
+
+    # ─── Twilio Endpoints ──────────────────────────────────────────
+
+    @router.post("/twilio/voice")
+    async def twilio_voice(request: Request):
+        form = await request.form()
+        params = {k: str(v) for k, v in form.items()}
+        sig = request.headers.get("X-Twilio-Signature", "")
+        url = str(request.url)
+
+        if not verify_twilio_signature(url, params, sig):
+            return Response(content="Invalid signature", status_code=401)
+
+        result = processor.process_twilio_inbound_call(params)
+        return Response(
+            content=result.get("twiml", ""),
+            media_type="application/xml",
+        )
+
+    @router.post("/twilio/sms")
+    async def twilio_sms(request: Request):
+        form = await request.form()
+        params = {k: str(v) for k, v in form.items()}
+        sig = request.headers.get("X-Twilio-Signature", "")
+        url = str(request.url)
+
+        if not verify_twilio_signature(url, params, sig):
+            return Response(content="Invalid signature", status_code=401)
+
+        result = processor.process_twilio_sms_received(params)
+        return Response(
+            content=result.get("twiml", ""),
+            media_type="application/xml",
+        )
+
+    @router.post("/twilio/recording")
+    async def twilio_recording(request: Request):
+        form = await request.form()
+        params = {k: str(v) for k, v in form.items()}
+        sig = request.headers.get("X-Twilio-Signature", "")
+        url = str(request.url)
+
+        if not verify_twilio_signature(url, params, sig):
+            return Response(content="Invalid signature", status_code=401)
+
+        result = processor.process_twilio_recording(params)
         return result
 
     return router

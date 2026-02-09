@@ -191,3 +191,31 @@ class RefundRequest(BaseModel):
     customer_email: str = ""
     customer_name: str = ""
     approved: bool = False  # Requires human approval
+
+
+# ─── Voice & Telephony ──────────────────────────────────────────────
+
+class VoiceMessage(BaseModel):
+    """Inbound voice message (voicemail) data."""
+
+    call_sid: str
+    caller_number: str
+    caller_name: str = ""
+    recording_url: str = ""
+    recording_duration: int = 0  # seconds
+    transcript: str = ""
+    classified_intent: str = "unknown"  # sales, support, urgent, unknown
+    intent_confidence: float = 0.0
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SMSMessage(BaseModel):
+    """Inbound/outbound SMS message data."""
+
+    message_sid: str = ""
+    from_number: str
+    to_number: str
+    body: str
+    direction: str = "inbound"  # inbound, outbound
+    num_media: int = 0
+    metadata: dict[str, Any] = Field(default_factory=dict)

@@ -113,6 +113,10 @@ class ConfigGenerator:
             "stripe_check_payment", "stripe_process_refund",
             "rag_search",
         ],
+        AgentRole.VOICE.value: [
+            "send_sms", "make_call", "get_call_logs", "get_sms_logs",
+            "transcribe_audio", "buy_phone_number", "rag_search",
+        ],
     }
 
     # Default human gates for each agent type
@@ -122,6 +126,7 @@ class ConfigGenerator:
         AgentRole.APPOINTMENT_SETTER.value: ["human_review"],
         AgentRole.JANITOR.value: [],
         AgentRole.COMMERCE.value: ["human_review"],
+        AgentRole.VOICE.value: ["human_review"],
     }
 
     # Browser requirement by agent type

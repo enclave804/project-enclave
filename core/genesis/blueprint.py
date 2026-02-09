@@ -49,6 +49,7 @@ class AgentRole(str, Enum):
     APPOINTMENT_SETTER = "appointment_setter"
     JANITOR = "janitor"
     COMMERCE = "commerce"
+    VOICE = "voice"
 
 
 class IntegrationType(str, Enum):
