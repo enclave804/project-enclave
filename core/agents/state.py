@@ -625,3 +625,47 @@ class CustomerSuccessAgentState(BaseAgentState, total=False):
     # ---- Report ----
     report_summary: str
     report_generated_at: str
+
+
+class AutopilotAgentState(BaseAgentState, total=False):
+    """
+    State for the Autopilot Agent — The Self-Driver.
+
+    Flow: analyze_system → detect_issues → generate_strategy →
+          human_review → execute_strategy → report → END
+
+    The Autopilot is the "self-driving" layer that orchestrates
+    autonomous healing, budget optimization, and strategic
+    recommendations across the entire platform.
+    """
+
+    # ---- System Snapshot ----
+    performance_snapshot: dict[str, Any]       # Cross-agent metrics
+    budget_snapshot: dict[str, Any]            # Current spend/ROAS
+    experiment_snapshot: list[dict[str, Any]]  # Active experiments
+
+    # ---- Diagnosis ----
+    detected_issues: list[dict[str, Any]]      # [{agent_id, issue_type, severity, details}]
+    health_scores: dict[str, float]            # {agent_id: 0.0-1.0}
+    optimization_opportunities: list[dict[str, Any]]
+
+    # ---- Strategy ----
+    healing_actions: list[dict[str, Any]]      # Config fixes to apply
+    budget_actions: list[dict[str, Any]]       # Budget reallocations
+    experiment_proposals: list[dict[str, Any]] # New experiments to launch
+    strategy_summary: str                       # LLM-generated strategy text
+    strategy_confidence: float                  # 0.0-1.0
+
+    # ---- Actions ----
+    actions_planned: list[dict[str, Any]]
+    actions_approved: bool
+    actions_executed: list[dict[str, Any]]
+    actions_failed: list[dict[str, Any]]
+
+    # ---- Session ----
+    session_id: str
+    session_type: str                           # full_analysis, healing, budget, strategy
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str

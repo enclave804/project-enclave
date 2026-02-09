@@ -1,0 +1,47 @@
+# Autopilot Agent — The Self-Driving Layer
+#
+# Orchestrates autonomous healing, budget optimization, and strategic
+# recommendations across the entire platform.
+#
+# Combines three subsystems:
+# 1. SelfHealer — crash diagnosis + config-level fixes
+# 2. BudgetManager — ROAS optimization + budget reallocation
+# 3. Strategist — performance analysis + experiment proposals
+#
+# Safety: ALL strategy actions require human approval.
+
+agent_id: autopilot_v1
+agent_type: autopilot
+name: "Autopilot Agent"
+description: "Self-driving system optimization — healing, budget, and strategy"
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.4
+  max_tokens: 8192
+
+tools: [search_knowledge, save_insight]
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before: [human_review]
+  auto_approve_threshold: 0.0  # Never auto-approve — always require human review
+
+schedule:
+  trigger: scheduled
+  cron: "0 6 * * *"  # Daily at 6 AM
+
+# Safety
+max_consecutive_errors: 3
+rag_write_confidence_threshold: 0.8
+
+# Agent-specific params
+params:
+  analysis_period_days: 7
+  min_confidence_threshold: 0.6
+  max_budget_reallocation_pct: 0.20
+  healing_auto_apply: false
