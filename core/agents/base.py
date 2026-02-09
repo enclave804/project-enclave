@@ -88,6 +88,9 @@ class BaseAgent(ABC):
         checkpointer: Any = None,
         browser_tool: Any = None,
         mcp_tools: Optional[list[Any]] = None,
+        *,
+        router: Any = None,
+        openai_client: Any = None,
     ):
         self.config = config
         self.db = db
@@ -98,6 +101,22 @@ class BaseAgent(ABC):
         self.mcp_tools = mcp_tools or []
         self._graph: Any = None
         self._consecutive_errors: int = 0
+
+        # --- Phase 6: Multi-Model Router ---
+        # If a router is provided, use it for intent-based model routing.
+        # Otherwise, create one from the anthropic_client + optional openai_client.
+        # self.llm remains available for backward compatibility.
+        if router is not None:
+            self.router = router
+        else:
+            from core.llm.router import ModelRouter
+            self.router = ModelRouter(
+                anthropic_client=anthropic_client,
+                openai_client=openai_client,
+            )
+
+        # Vision client (lazy — uses router when called)
+        self._vision: Any = None
 
     @property
     def agent_id(self) -> str:
@@ -110,6 +129,41 @@ class BaseAgent(ABC):
     @property
     def name(self) -> str:
         return self.config.name
+
+    @property
+    def vision(self) -> Any:
+        """Lazy-initialized VisionClient for image analysis."""
+        if self._vision is None:
+            from core.llm.vision import VisionClient
+            self._vision = VisionClient(router=self.router)
+        return self._vision
+
+    async def route_llm(
+        self,
+        intent: str,
+        system_prompt: str,
+        user_prompt: str,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Convenience: route an LLM call through the ModelRouter.
+
+        Instead of self.llm.messages.create(), agents can use:
+            response = await self.route_llm(
+                intent="creative_writing",
+                system_prompt="You are a copywriter.",
+                user_prompt="Write a tweet about AI.",
+            )
+            text = response.text
+
+        Falls back to self.llm (Anthropic) if routing fails.
+        """
+        return await self.router.route(
+            intent=intent,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            **kwargs,
+        )
 
     @abstractmethod
     def build_graph(self) -> Any:
