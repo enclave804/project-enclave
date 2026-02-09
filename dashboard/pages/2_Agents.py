@@ -42,7 +42,9 @@ require_auth()
 
 from dashboard.theme import (
     COLORS, STATUS_CONFIG, inject_theme_css, page_header,
-    section_header, status_badge, status_dot,
+    section_header, status_badge, status_dot, render_empty_state,
+    render_progress_bar, render_divider, render_timestamp,
+    render_stat_grid,
 )
 
 inject_theme_css()
@@ -129,14 +131,33 @@ page_header(
     f"{len(agents)} agents registered for {vertical_id.replace('_', ' ').title()}",
 )
 
+# Safety notice
+shadow_agents = [a for a in agents if a.get("shadow_mode", False)]
+if shadow_agents:
+    st.markdown(
+        f"""
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+                     background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.2);
+                     border-radius: 8px; margin-bottom: 16px;">
+            <span style="font-size: 1.1rem;">◐</span>
+            <span style="font-size: 0.78rem; color: {COLORS['text_secondary']};">
+                <strong style="color: {COLORS['status_purple']};">{len(shadow_agents)} agent(s) in shadow mode</strong> —
+                Actions are simulated and logged but never reach real customers.
+                Review results before promoting to live.
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 if not agents:
     st.markdown(
-        f'<div style="text-align: center; padding: 60px; color: {COLORS["text_tertiary"]};">'
-        f'<div style="font-size: 2rem; margin-bottom: 12px;">◌</div>'
-        f'No agents registered.<br><br>'
-        f'<span style="font-size: 0.75rem;">Run '
-        f'<code>python main.py agent list {vertical_id}</code> '
-        f'to discover agents from YAML configs.</span></div>',
+        render_empty_state(
+            "◌",
+            "No agents registered",
+            "Deploy agent YAML configs to populate your fleet.",
+            f"python main.py agent list {vertical_id}",
+        ),
         unsafe_allow_html=True,
     )
     st.stop()
@@ -156,20 +177,17 @@ for a in agents:
     if cfg.get("consecutive_errors", 0) >= cfg.get("max_consecutive_errors", 5):
         tripped_count += 1
 
-summary_cols = st.columns(4)
-with summary_cols[0]:
-    st.metric("Active", active_count)
-with summary_cols[1]:
-    st.metric("Shadow", shadow_count)
-with summary_cols[2]:
-    st.metric("Paused", paused_count)
-with summary_cols[3]:
-    st.metric("Tripped", tripped_count)
-
 st.markdown(
-    f'<div style="height: 1px; background: {COLORS["border_subtle"]}; margin: 16px 0;"></div>',
+    render_stat_grid([
+        (str(active_count), "Active", COLORS["status_green"]),
+        (str(shadow_count), "Shadow", COLORS["status_purple"]),
+        (str(paused_count), "Paused", COLORS["status_red"]),
+        (str(tripped_count), "Tripped", COLORS["status_yellow"]),
+    ]),
     unsafe_allow_html=True,
 )
+
+st.markdown(render_divider(), unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -423,7 +441,10 @@ for agent in agents:
                 st.dataframe(table_data, use_container_width=True, hide_index=True)
             else:
                 st.markdown(
-                    f'<div style="text-align: center; padding: 20px; color: {COLORS["text_tertiary"]}; '
-                    f'font-size: 0.82rem;">No runs recorded yet.</div>',
+                    render_empty_state(
+                        "○",
+                        "No runs recorded yet",
+                        "This agent hasn't been executed. Start a run to see history.",
+                    ),
                     unsafe_allow_html=True,
                 )

@@ -57,7 +57,8 @@ require_auth()
 from dashboard.theme import (
     COLORS, STATUS_CONFIG, inject_theme_css, page_header,
     section_header, status_badge, feed_item, kpi_card,
-    render_health_indicator,
+    render_health_indicator, render_timestamp, sparkline_svg,
+    render_empty_state, render_divider,
 )
 
 inject_theme_css()
@@ -122,10 +123,29 @@ stats_by_agent = {s["agent_id"]: s for s in (agent_stats or [])}
 # Header
 # ---------------------------------------------------------------------------
 
-page_header(
-    "◆ Command Center",
-    f"Monitoring {vertical_id.replace('_', ' ').title()} — {len(agents_data)} agents deployed",
-)
+# Auto-refresh: rerun every 30s when enabled
+if st.sidebar.checkbox("Auto-refresh (30s)", value=False, key="auto_refresh"):
+    st.cache_data.clear()
+    import time as _time
+    _time.sleep(0)  # Signal intent; Streamlit rerun handled below
+
+header_col, ts_col = st.columns([3, 1])
+with header_col:
+    page_header(
+        "◆ Command Center",
+        f"Monitoring {vertical_id.replace('_', ' ').title()} — {len(agents_data)} agents deployed",
+    )
+with ts_col:
+    st.markdown(
+        f'<div style="text-align:right; padding-top:12px;">{render_timestamp()}</div>',
+        unsafe_allow_html=True,
+    )
+
+# Auto-refresh polling
+if st.session_state.get("auto_refresh", False):
+    import time as _time
+    _time.sleep(30)
+    st.rerun()
 
 
 # ---------------------------------------------------------------------------
@@ -134,10 +154,26 @@ page_header(
 
 section_header("KEY METRICS", f"{datetime.now(timezone.utc).strftime('%H:%M')} UTC")
 
+# Fetch daily run data for sparklines (last 7 days)
+daily_runs = _safe_call(lambda: db.get_daily_run_counts(days=7), [])
+daily_values = [d.get("count", 0) for d in (daily_runs or [])] or [0]
+
+# Fetch daily lead data for sparklines
+daily_leads = _safe_call(lambda: db.get_daily_contact_counts(days=7), [])
+daily_lead_values = [d.get("count", 0) for d in (daily_leads or [])] or [0]
+
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    st.metric("Total Leads", f"{leads:,}")
+    spark = sparkline_svg(daily_lead_values, COLORS["status_green"])
+    st.markdown(
+        f"""<div class="sov-kpi-card">
+            <div class="sov-kpi-label">Total Leads</div>
+            <div class="sov-kpi-value">{leads:,}</div>
+            <div style="margin-top:8px;">{spark}</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
 
 with col2:
     st.metric("Active Agents", f"{len(enabled_agents)}/{len(agents_data)}")
@@ -154,7 +190,15 @@ with col5:
     total_runs = sum(s.get("total_runs", 0) for s in (agent_stats or []))
     total_success = sum(s.get("success_runs", 0) for s in (agent_stats or []))
     rate = (total_success / total_runs * 100) if total_runs > 0 else 0
-    st.metric("Success Rate", f"{rate:.0f}%")
+    spark = sparkline_svg(daily_values, COLORS["accent_primary"])
+    st.markdown(
+        f"""<div class="sov-kpi-card">
+            <div class="sov-kpi-label">Success Rate</div>
+            <div class="sov-kpi-value">{rate:.0f}%</div>
+            <div style="margin-top:8px;">{spark}</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -178,10 +222,20 @@ health_html = render_health_indicator(
 )
 st.markdown(health_html, unsafe_allow_html=True)
 
-st.markdown(
-    f'<div style="height: 1px; background: {COLORS["border_subtle"]}; margin: 16px 0;"></div>',
-    unsafe_allow_html=True,
-)
+# Human-in-the-loop gate indicator
+gate_html = f"""
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+             background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.15);
+             border-radius: 8px; margin: 8px 0 16px;">
+    <span style="font-size: 0.9rem;">🛡</span>
+    <span style="font-size: 0.72rem; color: {COLORS['text_secondary']};">
+        <strong style="color: {COLORS['status_green']};">Human-in-the-Loop</strong> —
+        All outbound actions require approval · {len(shadow_agents)} agent(s) in shadow mode ·
+        {failed_tasks} task(s) need attention
+    </span>
+</div>
+"""
+st.markdown(gate_html, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -238,11 +292,12 @@ with feed_col:
         )
     else:
         st.markdown(
-            f'<div style="text-align: center; padding: 40px; color: {COLORS["text_tertiary"]};">'
-            f'No agent activity recorded yet.<br><br>'
-            f'<span style="font-size: 0.75rem;">Run '
-            f'<code>python main.py agent run {vertical_id} outreach</code> '
-            f'to see activity here.</span></div>',
+            render_empty_state(
+                "◌",
+                "No agent activity recorded yet",
+                "Agent runs will appear here in real-time as they execute.",
+                f"python main.py agent run {vertical_id} outreach",
+            ),
             unsafe_allow_html=True,
         )
 
@@ -305,19 +360,17 @@ with fleet_col:
             )
     else:
         st.markdown(
-            f'<div style="text-align: center; padding: 40px; color: {COLORS["text_tertiary"]};">'
-            f'No agents registered.<br><br>'
-            f'<span style="font-size: 0.75rem;">Run '
-            f'<code>python main.py agent list {vertical_id}</code> '
-            f'to discover agents.</span></div>',
+            render_empty_state(
+                "◌",
+                "No agents registered",
+                "Deploy agent configurations to see your fleet here.",
+                f"python main.py agent list {vertical_id}",
+            ),
             unsafe_allow_html=True,
         )
 
 
-st.markdown(
-    f'<div style="height: 1px; background: {COLORS["border_subtle"]}; margin: 20px 0;"></div>',
-    unsafe_allow_html=True,
-)
+st.markdown(render_divider(), unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -390,10 +443,7 @@ with threat_col3:
 # Training Data / RLHF Flywheel
 # ---------------------------------------------------------------------------
 
-st.markdown(
-    f'<div style="height: 1px; background: {COLORS["border_subtle"]}; margin: 20px 0;"></div>',
-    unsafe_allow_html=True,
-)
+st.markdown(render_divider(), unsafe_allow_html=True)
 
 section_header("RLHF FLYWHEEL", "learning loop")
 
@@ -432,9 +482,11 @@ if training_stats:
             )
 else:
     st.markdown(
-        f'<div style="text-align: center; padding: 24px; color: {COLORS["text_tertiary"]}; '
-        f'font-size: 0.82rem;">'
-        f'No training examples yet. Approve/edit content in the Approvals page to start the flywheel.'
-        f'</div>',
+        render_empty_state(
+            "◎",
+            "No training examples yet",
+            "Approve and edit content in the Approvals page to start the RLHF flywheel. "
+            "Each human edit becomes a training signal.",
+        ),
         unsafe_allow_html=True,
     )

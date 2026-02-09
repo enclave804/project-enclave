@@ -42,6 +42,7 @@ require_auth()
 
 from dashboard.theme import (
     COLORS, inject_theme_css, page_header, section_header,
+    render_empty_state, render_divider,
 )
 
 inject_theme_css()
@@ -99,6 +100,23 @@ page_header(
     "Review, edit, and approve agent outputs before they go live",
 )
 
+# Human-in-the-loop reminder
+st.markdown(
+    f"""
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+                 background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2);
+                 border-radius: 8px; margin-bottom: 16px;">
+        <span style="font-size: 1.1rem;">🛡</span>
+        <span style="font-size: 0.78rem; color: {COLORS['text_secondary']};">
+            <strong style="color: {COLORS['text_accent']};">Human-in-the-Loop active</strong> —
+            Nothing reaches customers without your explicit approval.
+            Every edit trains the AI to do better next time.
+        </span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 # ---------------------------------------------------------------------------
 # Content: Kanban Board
@@ -113,11 +131,12 @@ def show_kanban_board():
 
     if not all_content:
         st.markdown(
-            f'<div style="text-align: center; padding: 60px; color: {COLORS["text_tertiary"]};">'
-            f'<div style="font-size: 2rem; margin-bottom: 12px;">◌</div>'
-            f'No content in the pipeline.<br><br>'
-            f'<span style="font-size: 0.75rem;">Content will appear here when agents '
-            f'generate blog posts, proposals, or email drafts.</span></div>',
+            render_empty_state(
+                "◌",
+                "No content in the pipeline",
+                "Content will appear here when agents generate blog posts, "
+                "proposals, or email drafts. Each piece requires human approval.",
+            ),
             unsafe_allow_html=True,
         )
         return
@@ -261,8 +280,11 @@ def show_content_list():
 
     if not items:
         st.markdown(
-            f'<div style="text-align: center; padding: 40px; color: {COLORS["text_tertiary"]}; '
-            f'font-size: 0.82rem;">No content found.</div>',
+            render_empty_state(
+                "◌",
+                "No content found",
+                "Try adjusting your filter or wait for agents to generate content.",
+            ),
             unsafe_allow_html=True,
         )
         return
@@ -401,8 +423,11 @@ def show_task_queue():
 
     if not tasks:
         st.markdown(
-            f'<div style="text-align: center; padding: 40px; color: {COLORS["text_tertiary"]}; '
-            f'font-size: 0.82rem;">No tasks in the queue.</div>',
+            render_empty_state(
+                "◌",
+                "No tasks in the queue",
+                "Inter-agent tasks will appear here when agents coordinate work.",
+            ),
             unsafe_allow_html=True,
         )
         return

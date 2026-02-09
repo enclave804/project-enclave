@@ -250,3 +250,237 @@ class TestHealthIndicator:
         from dashboard.theme import render_health_indicator
         html = render_health_indicator(0, 0, 0)
         assert isinstance(html, str)
+
+
+# ---------------------------------------------------------------------------
+# Sparkline SVG
+# ---------------------------------------------------------------------------
+
+
+class TestSparklineSvg:
+    """Test the sparkline_svg SVG generator."""
+
+    def test_returns_svg_string(self):
+        from dashboard.theme import sparkline_svg
+        svg = sparkline_svg([1, 2, 3, 4, 5])
+        assert isinstance(svg, str)
+        assert "<svg" in svg
+        assert "polyline" in svg
+
+    def test_empty_list_returns_empty(self):
+        from dashboard.theme import sparkline_svg
+        assert sparkline_svg([]) == ""
+
+    def test_single_value_returns_empty(self):
+        from dashboard.theme import sparkline_svg
+        assert sparkline_svg([42]) == ""
+
+    def test_two_values_works(self):
+        from dashboard.theme import sparkline_svg
+        svg = sparkline_svg([1, 5])
+        assert "<svg" in svg
+
+    def test_custom_color(self):
+        from dashboard.theme import sparkline_svg
+        svg = sparkline_svg([1, 2, 3], color="#FF0000")
+        assert "#FF0000" in svg
+
+    def test_custom_dimensions(self):
+        from dashboard.theme import sparkline_svg
+        svg = sparkline_svg([1, 2, 3], width=200, height=50)
+        assert 'width="200"' in svg
+        assert 'height="50"' in svg
+
+    def test_flat_values(self):
+        from dashboard.theme import sparkline_svg
+        svg = sparkline_svg([5, 5, 5, 5])
+        assert isinstance(svg, str)
+        assert "<svg" in svg
+
+    def test_negative_values(self):
+        from dashboard.theme import sparkline_svg
+        svg = sparkline_svg([-5, -3, -1, 0, 2])
+        assert isinstance(svg, str)
+
+
+# ---------------------------------------------------------------------------
+# Skeleton Loader
+# ---------------------------------------------------------------------------
+
+
+class TestSkeleton:
+    """Test the render_skeleton placeholder."""
+
+    def test_returns_html(self):
+        from dashboard.theme import render_skeleton
+        html = render_skeleton()
+        assert "sov-skeleton" in html
+
+    def test_custom_height(self):
+        from dashboard.theme import render_skeleton
+        html = render_skeleton(height=32)
+        assert "height:32px" in html
+
+    def test_multiple(self):
+        from dashboard.theme import render_skeleton
+        html = render_skeleton(count=3)
+        assert html.count("sov-skeleton") == 3
+
+
+# ---------------------------------------------------------------------------
+# Empty State
+# ---------------------------------------------------------------------------
+
+
+class TestEmptyState:
+    """Test the render_empty_state component."""
+
+    def test_returns_html(self):
+        from dashboard.theme import render_empty_state
+        html = render_empty_state("◌", "No data")
+        assert "sov-empty" in html
+        assert "◌" in html
+        assert "No data" in html
+
+    def test_includes_description(self):
+        from dashboard.theme import render_empty_state
+        html = render_empty_state("◌", "Title", "Some description")
+        assert "Some description" in html
+
+    def test_includes_action_hint(self):
+        from dashboard.theme import render_empty_state
+        html = render_empty_state("◌", "Title", action_hint="run cmd")
+        assert "run cmd" in html
+
+    def test_no_action_hint(self):
+        from dashboard.theme import render_empty_state
+        html = render_empty_state("◌", "Title")
+        assert "<code" not in html
+
+
+# ---------------------------------------------------------------------------
+# Progress Bar
+# ---------------------------------------------------------------------------
+
+
+class TestProgressBar:
+    """Test the render_progress_bar component."""
+
+    def test_returns_html(self):
+        from dashboard.theme import render_progress_bar
+        html = render_progress_bar(50, 100)
+        assert "sov-progress" in html
+
+    def test_percentage_calculated(self):
+        from dashboard.theme import render_progress_bar
+        html = render_progress_bar(25, 100)
+        assert "width:25.0%" in html
+
+    def test_caps_at_100(self):
+        from dashboard.theme import render_progress_bar
+        html = render_progress_bar(200, 100)
+        assert "width:100.0%" in html
+
+    def test_zero_max_no_crash(self):
+        from dashboard.theme import render_progress_bar
+        html = render_progress_bar(0, 0)
+        assert isinstance(html, str)
+
+    def test_custom_color(self):
+        from dashboard.theme import render_progress_bar
+        html = render_progress_bar(50, 100, color="#FF0000")
+        assert "#FF0000" in html
+
+
+# ---------------------------------------------------------------------------
+# Breadcrumb
+# ---------------------------------------------------------------------------
+
+
+class TestBreadcrumb:
+    """Test the render_breadcrumb component."""
+
+    def test_returns_html(self):
+        from dashboard.theme import render_breadcrumb
+        html = render_breadcrumb(["Home", "Agents", "Outreach"])
+        assert "sov-breadcrumb" in html
+
+    def test_last_item_active(self):
+        from dashboard.theme import render_breadcrumb
+        html = render_breadcrumb(["Home", "Active"])
+        assert "sov-breadcrumb-active" in html
+        assert "Active" in html
+
+    def test_separators(self):
+        from dashboard.theme import render_breadcrumb
+        html = render_breadcrumb(["A", "B", "C"])
+        assert html.count("sov-breadcrumb-sep") == 2
+
+
+# ---------------------------------------------------------------------------
+# Stat Grid
+# ---------------------------------------------------------------------------
+
+
+class TestStatGrid:
+    """Test the render_stat_grid component."""
+
+    def test_returns_html(self):
+        from dashboard.theme import render_stat_grid
+        html = render_stat_grid([("5", "Active", "#10B981")])
+        assert "sov-stat-grid" in html
+        assert "5" in html
+        assert "Active" in html
+
+    def test_multiple_stats(self):
+        from dashboard.theme import render_stat_grid
+        html = render_stat_grid([
+            ("5", "Active", "#10B981"),
+            ("2", "Paused", "#EF4444"),
+        ])
+        assert html.count("sov-stat") >= 2
+
+    def test_empty_color(self):
+        from dashboard.theme import render_stat_grid, COLORS
+        html = render_stat_grid([("1", "Label", "")])
+        assert COLORS["text_primary"] in html
+
+
+# ---------------------------------------------------------------------------
+# Divider
+# ---------------------------------------------------------------------------
+
+
+class TestDivider:
+    """Test the render_divider component."""
+
+    def test_simple_divider(self):
+        from dashboard.theme import render_divider
+        html = render_divider()
+        assert "height:1px" in html
+
+    def test_labeled_divider(self):
+        from dashboard.theme import render_divider
+        html = render_divider("SECTION")
+        assert "sov-divider" in html
+        assert "SECTION" in html
+
+
+# ---------------------------------------------------------------------------
+# Timestamp
+# ---------------------------------------------------------------------------
+
+
+class TestTimestamp:
+    """Test the render_timestamp component."""
+
+    def test_returns_html(self):
+        from dashboard.theme import render_timestamp
+        html = render_timestamp()
+        assert "sov-timestamp" in html
+        assert "UTC" in html
+
+    def test_custom_label(self):
+        from dashboard.theme import render_timestamp
+        html = render_timestamp("Refreshed")
+        assert "Refreshed" in html

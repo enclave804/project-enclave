@@ -28,6 +28,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 VERSION = "v1.0.0"
 
+# Track session start time
+import time as _time
+_SESSION_START = _time.time()
+
 
 def get_vertical_options() -> dict[str, str]:
     """
@@ -214,13 +218,27 @@ def render_sidebar(
             unsafe_allow_html=True,
         )
 
-    # ─── Version Footer ───────────────────────────────────
+    # ─── Version Footer + Session Timer ──────────────────
     if show_version:
+        # Session duration
+        elapsed = int(_time.time() - _SESSION_START)
+        mins, secs = divmod(elapsed, 60)
+        hrs, mins = divmod(mins, 60)
+        if hrs > 0:
+            session_str = f"{hrs}h {mins}m"
+        elif mins > 0:
+            session_str = f"{mins}m {secs}s"
+        else:
+            session_str = f"{secs}s"
+
         st.sidebar.markdown(
             f"""
             <div style="position: fixed; bottom: 16px; font-size: 0.65rem;
                          color: {COLORS['text_tertiary']};">
-                Sovereign Engine {VERSION}
+                <div>Sovereign Engine {VERSION}</div>
+                <div style="margin-top: 2px; font-family: 'JetBrains Mono', monospace;">
+                    Session: {session_str}
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
