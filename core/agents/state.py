@@ -366,3 +366,163 @@ class VoiceAgentState(BaseAgentState, total=False):
     # ---- Report ----
     report_summary: str
     report_generated_at: str
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Phase 11: Growth Agents
+# ══════════════════════════════════════════════════════════════════════
+
+
+class ProposalBuilderAgentState(BaseAgentState, total=False):
+    """
+    State for the Proposal Builder Agent — The Deal Closer.
+
+    Flow: gather_context → research_company → generate_proposal →
+          human_review → finalize → deliver → END
+
+    The Proposal Builder converts meeting notes + enrichment data into
+    professional SOWs/proposals that close deals. It reads from the
+    shared brain (outreach insights, appointment context, SEO authority)
+    to create highly-personalized proposals.
+    """
+
+    # ---- Deal Context ----
+    company_name: str
+    company_domain: str
+    contact_name: str
+    contact_email: str
+    contact_title: str
+    meeting_notes: str                     # Notes from the discovery call
+    meeting_date: str                      # ISO date of the meeting
+    deal_stage: str                        # "discovery", "proposal", "negotiation", "closed"
+
+    # ---- Company Research ----
+    company_profile: dict[str, Any]        # Enriched company data
+    company_tech_stack: dict[str, Any]     # Known tech stack from enrichment
+    company_pain_points: list[str]         # Identified pain points
+    competitive_landscape: list[dict[str, Any]]  # Competitor info
+
+    # ---- Proposal Generation ----
+    proposal_type: str                     # "sow", "one_pager", "executive_summary", "full_proposal"
+    proposal_outline: str                  # AI-generated outline
+    proposal_sections: list[dict[str, Any]]  # [{title, content, order}]
+    draft_proposal: str                    # Full proposal markdown
+    pricing_tier: str                      # "starter", "professional", "enterprise", "custom"
+    pricing_amount: float                  # Proposed price
+    pricing_breakdown: list[dict[str, Any]]  # [{item, amount, description}]
+    timeline_weeks: int                    # Estimated delivery timeline
+    deliverables: list[str]               # What the client gets
+
+    # ---- Templates ----
+    template_id: str                       # Which template was used
+    template_variables: dict[str, Any]     # Variables injected into template
+
+    # ---- Review ----
+    proposal_approved: bool
+    human_edited_proposal: Optional[str]
+    revision_count: int
+
+    # ---- Delivery ----
+    delivered: bool
+    delivery_method: str                   # "email", "pdf", "link"
+    delivery_url: str                      # Link to hosted proposal
+    delivered_at: str
+
+    # ---- RLHF ----
+    rlhf_captured: bool
+
+
+class SocialMediaAgentState(BaseAgentState, total=False):
+    """
+    State for the Social Media Agent — The Brand Builder.
+
+    Flow: analyze_trends → plan_content → generate_posts →
+          human_review → schedule → report → END
+
+    The Social Media Agent creates LinkedIn/X content calendars,
+    generates posts from outreach insights, and tracks engagement.
+    """
+
+    # ---- Content Planning ----
+    platform: str                           # "linkedin", "x", "both"
+    content_calendar: list[dict[str, Any]]  # [{date, platform, topic, post_type}]
+    trending_topics: list[str]
+    audience_insights: dict[str, Any]
+
+    # ---- Post Generation ----
+    posts_generated: list[dict[str, Any]]  # [{platform, content, hashtags, media_suggestion}]
+    post_count: int
+    draft_posts: list[dict[str, Any]]      # Posts awaiting review
+
+    # ---- Engagement Data ----
+    engagement_metrics: dict[str, Any]     # {impressions, clicks, shares, comments}
+    top_performing_posts: list[dict[str, Any]]
+    audience_growth: dict[str, Any]
+
+    # ---- Outreach Synergy ----
+    outreach_insights: list[dict[str, Any]]  # What messaging resonates from outreach
+    seo_keywords: list[str]                  # Keywords from SEO agent for alignment
+
+    # ---- Review ----
+    posts_approved: bool
+    human_edits: list[dict[str, Any]]
+
+    # ---- Scheduling ----
+    scheduled_posts: list[dict[str, Any]]  # [{platform, scheduled_at, post_id}]
+    posts_published: int
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str
+
+
+class AdsStrategyAgentState(BaseAgentState, total=False):
+    """
+    State for the Ads Strategy Agent — The Growth Engine.
+
+    Flow: analyze_performance → research_keywords → generate_campaigns →
+          human_review → deploy → monitor → report → END
+
+    The Ads Strategy Agent creates Google/Meta ad campaigns, generates
+    copy from outreach data, optimizes spend based on conversion data,
+    and A/B tests creative using shared brain insights.
+    """
+
+    # ---- Campaign Context ----
+    platform: str                           # "google", "meta", "linkedin", "both"
+    campaign_objective: str                 # "lead_gen", "brand_awareness", "conversions"
+    budget_daily: float
+    budget_total: float
+    target_cpa: float                       # Target cost per acquisition
+
+    # ---- Keyword Research ----
+    seed_keywords: list[str]
+    keyword_research: list[dict[str, Any]]  # [{keyword, volume, cpc, competition}]
+    negative_keywords: list[str]
+    selected_keywords: list[str]
+
+    # ---- Ad Copy Generation ----
+    ad_groups: list[dict[str, Any]]        # [{name, keywords, ads}]
+    generated_ads: list[dict[str, Any]]    # [{headline, description, url, cta}]
+    ad_variants: list[dict[str, Any]]      # A/B test variants
+
+    # ---- Audience Targeting ----
+    target_audience: dict[str, Any]        # Demographics, interests, behaviors
+    lookalike_audiences: list[dict[str, Any]]
+    retargeting_rules: list[dict[str, Any]]
+
+    # ---- Performance Data ----
+    campaign_performance: dict[str, Any]   # {impressions, clicks, ctr, conversions, cpa, roas}
+    ad_performance: list[dict[str, Any]]   # Per-ad metrics
+    optimization_suggestions: list[str]
+
+    # ---- Review ----
+    campaigns_approved: bool
+
+    # ---- Deployment ----
+    deployed_campaigns: list[dict[str, Any]]
+    campaigns_active: int
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str

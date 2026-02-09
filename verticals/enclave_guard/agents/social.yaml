@@ -1,0 +1,82 @@
+# Social Media Agent — Enclave Guard vertical
+#
+# The Megaphone: drives top-of-funnel awareness across Twitter/X
+# and LinkedIn. This is the agent that unlocks multi-vertical
+# marketing — every business needs social media presence.
+#
+# Pipeline: listen → ideate → create → human_review →
+#           publish → report → END
+#
+# Shared Brain Integration:
+#   READS:  winning_pattern (outreach), keyword_performance (SEO)
+#   WRITES: social_activity, engagement_data, winning_post_patterns
+#
+# Safety: NEVER auto-posts. All content goes through human_review.
+# Mock Mode: Logs to storage/social_mock.json when API keys are missing.
+#
+# Supported platforms:
+#   twitter  — 280-char posts, threads, image attachments
+#   linkedin — Long-form posts, professional tone, link shares
+
+agent_id: social_v1
+agent_type: social
+name: "Social Media Agent"
+description: "Monitors trends, generates platform-specific posts, and drives top-of-funnel awareness."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.7  # Higher creativity for social media content
+  max_tokens: 4096
+  context_window: 128000
+
+tools:
+  - post_social_update
+  - get_social_mentions
+  - reply_to_post
+  - check_trending_topics
+  - search_knowledge
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual  # Can also be scheduled via cron for daily posts
+  cron: "0 9 * * 1-5"  # Weekdays at 9 AM
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+  niche: "cybersecurity"
+
+  # Platform preferences
+  default_platform: "twitter"
+  posts_per_run: 3
+  max_posts_per_day: 5
+
+  # Content style
+  tone: "Confident, insightful, human — never corporate"
+  brand_voice: "Expert but approachable cybersecurity advisor"
+  emoji_usage: "light"  # light, moderate, heavy
+
+  # Hashtag strategy
+  always_include_hashtags:
+    - "#CyberSecurity"
+    - "#InfoSec"
+  max_hashtags_per_post: 5
+
+  # Engagement rules
+  reply_to_mentions: true
+  reply_tone: "helpful, warm, concise"
+  min_engagement_for_repost: 50  # Minimum likes to consider reposting

@@ -1,0 +1,92 @@
+# Ads Strategy Agent — Enclave Guard vertical
+#
+# Designs and optimizes paid ad campaigns to turn marketing spend
+# into qualified pipeline. This is the direct-response growth engine:
+# Google Ads drives bottom-of-funnel leads, Meta/LinkedIn drive
+# top-of-funnel awareness at scale.
+#
+# Pipeline: analyze_performance → research_keywords → generate_campaigns →
+#           human_review → deploy → report → END
+#
+# The Ads Strategy Agent reads from the shared brain:
+#   - Outreach insights (what messaging converts)
+#   - SEO keywords (what people search for)
+#   - Social engagement data (what resonates)
+#
+# Campaign types:
+#   lead_gen          → Maximize qualified lead submissions
+#   brand_awareness   → Maximize impressions in target audience
+#   conversions       → Optimize for specific conversion events
+#   traffic           → Drive visitors to landing pages
+#   retargeting       → Re-engage website visitors
+
+agent_id: ads_strategy_v1
+agent_type: ads_strategy
+name: "Ads Strategy Agent"
+description: "Designs and optimizes paid advertising campaigns across Google, Meta, and LinkedIn."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.5  # Balanced: creative copy but data-driven strategy
+  max_tokens: 4096
+  context_window: 128000
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual  # Campaigns are manual until proven
+  cron: ""
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+  niche: "cybersecurity"
+  landing_url: "https://enclaveguard.com"
+
+  # Budget guardrails (hard caps)
+  max_daily_budget: 200.0
+  max_total_budget: 5000.0
+
+  # A/B testing
+  variants_per_group: 3
+
+  # Default campaign settings
+  default_platform: "google"
+  default_objective: "lead_gen"
+  default_budget_daily: 50.0
+  default_target_cpa: 25.0
+
+  # Keyword settings
+  default_seed_keywords:
+    - "cybersecurity assessment"
+    - "penetration testing"
+    - "SOC 2 compliance"
+    - "security audit"
+    - "vulnerability assessment"
+    - "incident response"
+
+  # Compliance
+  ad_compliance:
+    no_misleading_claims: true
+    require_disclosures: true
+    prohibited_terms:
+      - "guaranteed"
+      - "100% secure"
+      - "never hacked"

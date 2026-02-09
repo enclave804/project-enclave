@@ -219,3 +219,90 @@ class SMSMessage(BaseModel):
     direction: str = "inbound"  # inbound, outbound
     num_media: int = 0
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+# ─── Proposals & SOWs ──────────────────────────────────────────────────
+
+
+class ProposalRequest(BaseModel):
+    """Request to generate a proposal/SOW from meeting context."""
+
+    company_name: str
+    company_domain: str = ""
+    contact_name: str
+    contact_email: str
+    contact_title: str = ""
+    meeting_notes: str = ""
+    meeting_date: str = ""  # ISO date
+    proposal_type: str = "full_proposal"  # sow, one_pager, executive_summary, full_proposal
+    pricing_tier: str = "professional"  # starter, professional, enterprise, custom
+    custom_requirements: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class GeneratedProposal(BaseModel):
+    """Output from the Proposal Builder Agent."""
+
+    title: str
+    proposal_type: str
+    sections: list[dict[str, Any]] = Field(default_factory=list)  # [{title, content, order}]
+    full_markdown: str = ""
+    pricing_tier: str = ""
+    pricing_amount: float = 0.0
+    pricing_breakdown: list[dict[str, Any]] = Field(default_factory=list)
+    timeline_weeks: int = 0
+    deliverables: list[str] = Field(default_factory=list)
+    company_name: str = ""
+    contact_name: str = ""
+
+
+# ─── Social Media ──────────────────────────────────────────────────────
+
+
+class SocialMediaPost(BaseModel):
+    """A single social media post for scheduling."""
+
+    platform: str  # "linkedin", "x"
+    content: str
+    hashtags: list[str] = Field(default_factory=list)
+    media_suggestion: str = ""  # Description of ideal media to attach
+    post_type: str = "thought_leadership"  # thought_leadership, case_study, industry_news, engagement
+    scheduled_at: Optional[str] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ContentCalendarEntry(BaseModel):
+    """A single entry in the content calendar."""
+
+    date: str  # ISO date
+    platform: str
+    topic: str
+    post_type: str = "thought_leadership"
+    status: str = "planned"  # planned, drafted, approved, published
+
+
+# ─── Ads & Campaigns ──────────────────────────────────────────────────
+
+
+class AdCampaign(BaseModel):
+    """A generated ad campaign definition."""
+
+    platform: str  # "google", "meta", "linkedin"
+    campaign_name: str
+    objective: str = "lead_gen"
+    budget_daily: float = 0.0
+    ad_groups: list[dict[str, Any]] = Field(default_factory=list)
+    target_audience: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class AdCreative(BaseModel):
+    """A single ad creative (headline + description + CTA)."""
+
+    headline: str
+    description: str = ""
+    display_url: str = ""
+    final_url: str = ""
+    call_to_action: str = "Learn More"
+    variant_id: str = ""  # For A/B testing
+    platform: str = "google"
