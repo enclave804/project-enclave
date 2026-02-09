@@ -107,6 +107,12 @@ class ConfigGenerator:
             "rag_search", "send_email",
         ],
         AgentRole.JANITOR.value: [],
+        AgentRole.COMMERCE.value: [
+            "shopify_get_products", "shopify_get_recent_orders",
+            "shopify_update_inventory", "stripe_create_payment_link",
+            "stripe_check_payment", "stripe_process_refund",
+            "rag_search",
+        ],
     }
 
     # Default human gates for each agent type
@@ -115,6 +121,7 @@ class ConfigGenerator:
         AgentRole.SEO_CONTENT.value: ["human_review"],
         AgentRole.APPOINTMENT_SETTER.value: ["human_review"],
         AgentRole.JANITOR.value: [],
+        AgentRole.COMMERCE.value: ["human_review"],
     }
 
     # Browser requirement by agent type
@@ -483,6 +490,11 @@ class ConfigGenerator:
 
         elif agent_type_str == AgentRole.APPOINTMENT_SETTER.value:
             params.setdefault("response_tone", bp.tone)
+
+        elif agent_type_str == AgentRole.COMMERCE.value:
+            params.setdefault("vip_threshold", 500.0)
+            params.setdefault("low_stock_threshold", 5)
+            params.setdefault("check_interval_hours", 6)
 
         return params
 

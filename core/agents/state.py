@@ -260,3 +260,60 @@ class OverseerAgentState(BaseAgentState, total=False):
     # ---- Report ----
     report_summary: str                     # Human-readable status report
     report_generated_at: str
+
+
+class CommerceAgentState(BaseAgentState, total=False):
+    """
+    State for the Commerce Agent — the Store Manager.
+
+    Flow: monitor → triage → [handle_vip | handle_low_stock | handle_refund] →
+          human_review → execute → report → END
+
+    The Commerce Agent watches the storefront and reacts to orders,
+    inventory, and payment events.
+    """
+
+    # ---- Order Data ----
+    recent_orders: list[dict[str, Any]]     # Orders from last check
+    order_count: int
+    total_revenue: float
+    vip_orders: list[dict[str, Any]]        # Orders above VIP threshold
+    vip_count: int
+
+    # ---- Inventory Data ----
+    products: list[dict[str, Any]]          # Product catalog snapshot
+    low_stock_alerts: list[dict[str, Any]]  # Variants below threshold
+    low_stock_count: int
+
+    # ---- Payment Data ----
+    pending_payments: list[dict[str, Any]]
+    failed_payments: list[dict[str, Any]]
+
+    # ---- Triage Results ----
+    triage_action: str                      # "vip_followup", "restock_alert", "refund_review", "routine"
+    triage_reasoning: str
+
+    # ---- Actions ----
+    actions_planned: list[dict[str, Any]]   # [{action, target, details, requires_approval}]
+    actions_approved: bool
+    actions_executed: list[dict[str, Any]]
+    actions_failed: list[dict[str, Any]]
+
+    # ---- VIP Handling ----
+    vip_customer_email: str
+    vip_customer_name: str
+    vip_order_total: float
+    vip_followup_drafted: bool
+    vip_email_subject: str
+    vip_email_body: str
+
+    # ---- Refund Handling ----
+    refund_order_id: str
+    refund_amount: float
+    refund_reason: str
+    refund_approved: bool
+    refund_result: dict[str, Any]
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str

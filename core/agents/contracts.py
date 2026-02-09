@@ -149,3 +149,45 @@ class TaskPayload(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
     source_context: str = ""  # why this task was created
     priority: int = Field(5, ge=1, le=10)
+
+
+# ─── Commerce ────────────────────────────────────────────────────────
+
+class OrderData(BaseModel):
+    """Standardized order data passed between agents."""
+
+    order_id: str
+    customer_email: str
+    customer_name: str = ""
+    total_price: float
+    currency: str = "USD"
+    line_items: list[dict[str, Any]] = Field(default_factory=list)
+    financial_status: str = ""  # paid, pending, refunded
+    fulfillment_status: str = ""  # fulfilled, unfulfilled, partial
+    is_vip: bool = False
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PaymentEvent(BaseModel):
+    """Payment event from Stripe webhook."""
+
+    payment_intent_id: str
+    amount_cents: int
+    currency: str = "usd"
+    status: str  # succeeded, failed, pending
+    customer_email: str = ""
+    error_message: Optional[str] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class RefundRequest(BaseModel):
+    """Request to process a refund."""
+
+    order_id: str
+    payment_intent_id: str
+    amount_cents: Optional[int] = None  # None = full refund
+    reason: str = ""
+    customer_email: str = ""
+    customer_name: str = ""
+    approved: bool = False  # Requires human approval

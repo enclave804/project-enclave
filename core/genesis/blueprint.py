@@ -48,6 +48,7 @@ class AgentRole(str, Enum):
     SEO_CONTENT = "seo_content"
     APPOINTMENT_SETTER = "appointment_setter"
     JANITOR = "janitor"
+    COMMERCE = "commerce"
 
 
 class IntegrationType(str, Enum):

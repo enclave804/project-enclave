@@ -1,9 +1,9 @@
 """
 FastMCP server for the Sovereign Venture Engine.
 
-Exposes Apollo, Supabase/RAG, Email, Calendar, and System tools to agents via the
-Model Context Protocol (MCP). Each tool is a thin wrapper around
-the existing integration clients.
+Exposes Apollo, Supabase/RAG, Email, Calendar, System, and Commerce tools
+to agents via the Model Context Protocol (MCP). Each tool is a thin wrapper
+around the existing integration clients.
 
 Entry points:
     python -m core.mcp           # stdio transport (for agent integration)
@@ -28,6 +28,12 @@ Architecture:
     +-- get_agent_error_rates()       -> Per-agent failure analysis
     +-- get_knowledge_stats()         -> Shared brain utilization
     +-- get_cache_performance()       -> ResponseCache stats
+    +-- shopify_get_products()        -> CommerceClient.get_products()
+    +-- shopify_update_inventory()    -> CommerceClient.update_inventory() [@sandboxed_tool]
+    +-- shopify_get_recent_orders()   -> CommerceClient.get_recent_orders()
+    +-- stripe_create_payment_link()  -> CommerceClient.create_payment_link()
+    +-- stripe_check_payment()        -> CommerceClient.check_payment()
+    +-- stripe_process_refund()       -> CommerceClient.process_refund() [@sandboxed_tool]
 """
 
 from __future__ import annotations
@@ -118,12 +124,29 @@ def create_mcp_server(
     mcp.add_tool(Tool.from_function(get_knowledge_stats))
     mcp.add_tool(Tool.from_function(get_cache_performance))
 
+    # ─── Commerce Tools (inventory/refund sandboxed) ───────────
+    from core.mcp.tools.commerce_tools import (
+        shopify_get_products,
+        shopify_update_inventory,
+        shopify_get_recent_orders,
+        stripe_create_payment_link,
+        stripe_check_payment,
+        stripe_process_refund,
+    )
+
+    mcp.add_tool(Tool.from_function(shopify_get_products))
+    mcp.add_tool(Tool.from_function(shopify_update_inventory))
+    mcp.add_tool(Tool.from_function(shopify_get_recent_orders))
+    mcp.add_tool(Tool.from_function(stripe_create_payment_link))
+    mcp.add_tool(Tool.from_function(stripe_check_payment))
+    mcp.add_tool(Tool.from_function(stripe_process_refund))
+
     logger.info(
         "mcp_server_created",
         extra={
             "server_name": name,
             "vertical_id": vertical_id,
-            "tool_count": 17,
+            "tool_count": 23,
         },
     )
 
