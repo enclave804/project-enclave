@@ -51,14 +51,9 @@ require_auth()
 # Sidebar
 # ---------------------------------------------------------------------------
 
-st.sidebar.title("🛡️ Sovereign Cockpit")
+from dashboard.sidebar import render_sidebar
 
-vertical_options = {"Enclave Guard": "enclave_guard"}
-vertical_label = st.sidebar.selectbox("Vertical", list(vertical_options.keys()))
-vertical_id = vertical_options[vertical_label]
-
-st.sidebar.markdown("---")
-st.sidebar.caption("Sovereign Venture Engine v0.2.0")
+vertical_id = render_sidebar(title="🛡️ Sovereign Cockpit")
 
 
 # ---------------------------------------------------------------------------

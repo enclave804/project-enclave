@@ -51,13 +51,9 @@ def _safe_call(fn, default=None):
 # Sidebar
 # ---------------------------------------------------------------------------
 
-st.sidebar.title("🤖 Agent Command")
+from dashboard.sidebar import render_sidebar
 
-vertical_options = {"Enclave Guard": "enclave_guard"}
-vertical_label = st.sidebar.selectbox("Vertical", list(vertical_options.keys()))
-vertical_id = vertical_options[vertical_label]
-
-st.sidebar.markdown("---")
+vertical_id = render_sidebar(title="🤖 Agent Command", show_version=False)
 
 # Emergency controls
 st.sidebar.subheader("🚨 Emergency Controls")

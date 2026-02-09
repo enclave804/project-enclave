@@ -52,18 +52,14 @@ def _safe_call(fn, default=None):
 # Sidebar
 # ---------------------------------------------------------------------------
 
-st.sidebar.title("✅ Approval Queue")
+from dashboard.sidebar import render_sidebar
 
-vertical_options = {"Enclave Guard": "enclave_guard"}
-vertical_label = st.sidebar.selectbox("Vertical", list(vertical_options.keys()))
-vertical_id = vertical_options[vertical_label]
+vertical_id = render_sidebar(title="✅ Approval Queue", show_version=False)
 
 queue_filter = st.sidebar.radio(
     "Show",
     ["Pending Review", "All Content", "Task Queue"],
 )
-
-st.sidebar.markdown("---")
 
 
 # ---------------------------------------------------------------------------

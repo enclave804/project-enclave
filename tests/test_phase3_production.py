@@ -1280,7 +1280,8 @@ class TestDashboardAuthIntegration:
         """require_auth() should be called before sidebar content."""
         app_code = (PROJECT_ROOT / "dashboard" / "app.py").read_text()
         auth_idx = app_code.index("require_auth()")
-        sidebar_idx = app_code.index("st.sidebar.title")
+        # Sidebar uses shared render_sidebar() from dashboard.sidebar
+        sidebar_idx = app_code.index("render_sidebar")
         assert auth_idx < sidebar_idx, (
             "require_auth() must be called before rendering content"
         )
