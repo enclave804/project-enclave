@@ -35,7 +35,7 @@ load_dotenv(PROJECT_ROOT / ".env", override=True)
 
 st.set_page_config(
     page_title="New Business — Genesis Engine",
-    page_icon="🚀",
+    page_icon="◆",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -48,6 +48,10 @@ st.set_page_config(
 from dashboard.auth import require_auth
 
 require_auth()
+
+from dashboard.theme import COLORS, inject_theme_css, page_header
+
+inject_theme_css()
 
 
 # ---------------------------------------------------------------------------
