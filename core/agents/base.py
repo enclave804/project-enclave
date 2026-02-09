@@ -123,6 +123,9 @@ class BaseAgent(ABC):
         self._tool_router: Any = None
         self._cache: Any = None
 
+        # --- Phase 13: Hive Mind (cross-agent intelligence) ---
+        self._hive: Any = None
+
     @property
     def agent_id(self) -> str:
         return self.config.agent_id
@@ -174,6 +177,63 @@ class BaseAgent(ABC):
             from core.llm.cache import ResponseCache
             self._cache = ResponseCache()
         return self._cache
+
+    @property
+    def hive(self) -> Any:
+        """Lazy-initialized HiveMind for cross-agent shared intelligence."""
+        if self._hive is None:
+            from core.memory.hive_mind import HiveMind
+            self._hive = HiveMind(
+                db=self.db,
+                embedder=self.embedder,
+                vertical_id=self.vertical_id,
+            )
+        return self._hive
+
+    def consult_hive(self, question: str, min_confidence: float = 0.7, limit: int = 3) -> list[dict]:
+        """
+        Convenience method: ask the Hive Mind for wisdom before acting.
+
+        Usage in agents:
+            insights = self.consult_hive("What email subject lines work for CTOs?")
+            for insight in insights:
+                context += insight["content"]
+        """
+        return self.hive.query(
+            topic=question,
+            consumer_agent=self.agent_id,
+            min_confidence=min_confidence,
+            limit=limit,
+            exclude_own=True,
+        )
+
+    def publish_to_hive(
+        self,
+        topic: str,
+        content: str,
+        confidence: float = 0.7,
+        evidence: Optional[dict] = None,
+        title: str = "",
+    ) -> Optional[dict]:
+        """
+        Convenience method: publish a learning to the Hive Mind.
+
+        Usage in agents:
+            self.publish_to_hive(
+                topic="email_performance",
+                content="Short subject lines get 2x open rates for Fintech CEOs",
+                confidence=0.85,
+                evidence={"sample_size": 150, "metric": "open_rate"},
+            )
+        """
+        return self.hive.publish(
+            source_agent=self.agent_id,
+            topic=topic,
+            content=content,
+            confidence=confidence,
+            evidence=evidence,
+            title=title,
+        )
 
     async def route_llm_cached(
         self,
