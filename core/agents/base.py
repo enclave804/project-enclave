@@ -118,6 +118,11 @@ class BaseAgent(ABC):
         # Vision client (lazy — uses router when called)
         self._vision: Any = None
 
+        # --- Phase 6 Sprint 2: Streaming, Tool Use, Cache ---
+        self._streaming_router: Any = None
+        self._tool_router: Any = None
+        self._cache: Any = None
+
     @property
     def agent_id(self) -> str:
         return self.config.agent_id
@@ -137,6 +142,60 @@ class BaseAgent(ABC):
             from core.llm.vision import VisionClient
             self._vision = VisionClient(router=self.router)
         return self._vision
+
+    @property
+    def streaming(self) -> Any:
+        """Lazy-initialized StreamingRouter for real-time token streaming."""
+        if self._streaming_router is None:
+            from core.llm.streaming import StreamingRouter
+            self._streaming_router = StreamingRouter(
+                anthropic_client=self.llm,
+                openai_client=getattr(self.router, '_openai', None),
+                config=self.router.config,
+            )
+        return self._streaming_router
+
+    @property
+    def tool_router(self) -> Any:
+        """Lazy-initialized ToolRouter for function calling."""
+        if self._tool_router is None:
+            from core.llm.tools import ToolRouter
+            self._tool_router = ToolRouter(
+                anthropic_client=self.llm,
+                openai_client=getattr(self.router, '_openai', None),
+                config=self.router.config,
+            )
+        return self._tool_router
+
+    @property
+    def cache(self) -> Any:
+        """Lazy-initialized ResponseCache for LLM response caching."""
+        if self._cache is None:
+            from core.llm.cache import ResponseCache
+            self._cache = ResponseCache()
+        return self._cache
+
+    async def route_llm_cached(
+        self,
+        intent: str,
+        system_prompt: str,
+        user_prompt: str,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Route an LLM call through cache + router.
+
+        Same as route_llm() but checks cache first. Only caches
+        low-temperature (deterministic) calls by default.
+        """
+        from core.llm.cache import cached_route
+        return await cached_route(
+            self.cache, self.router,
+            intent=intent,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            **kwargs,
+        )
 
     async def route_llm(
         self,
