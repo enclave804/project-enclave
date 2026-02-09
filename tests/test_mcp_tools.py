@@ -396,7 +396,7 @@ class TestMCPServer:
             pytest.skip("fastmcp not installed")
 
     def test_server_has_tools_registered(self):
-        """Server has all 6 tools registered."""
+        """Server has all expected tools registered (17 total)."""
         try:
             from core.mcp.server import create_mcp_server
 

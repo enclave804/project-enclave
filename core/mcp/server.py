@@ -1,7 +1,7 @@
 """
 FastMCP server for the Sovereign Venture Engine.
 
-Exposes Apollo, Supabase/RAG, Email, and Calendar tools to agents via the
+Exposes Apollo, Supabase/RAG, Email, Calendar, and System tools to agents via the
 Model Context Protocol (MCP). Each tool is a thin wrapper around
 the existing integration clients.
 
@@ -21,6 +21,13 @@ Architecture:
     +-- get_available_slots()         -> CalendarClient.get_available_slots()
     +-- book_meeting_slot()           -> CalendarClient.book_meeting() [@sandboxed_tool]
     +-- get_booking_link()            -> CalendarClient.get_booking_link()
+    +-- get_recent_logs()             -> LogBuffer (in-memory structured logs)
+    +-- query_run_history()           -> EnclaveDB.get_agent_runs()
+    +-- get_system_health()           -> Aggregate health check
+    +-- get_task_queue_status()       -> EnclaveDB task queue inspection
+    +-- get_agent_error_rates()       -> Per-agent failure analysis
+    +-- get_knowledge_stats()         -> Shared brain utilization
+    +-- get_cache_performance()       -> ResponseCache stats
 """
 
 from __future__ import annotations
@@ -92,12 +99,31 @@ def create_mcp_server(
     mcp.add_tool(Tool.from_function(book_meeting_slot))
     mcp.add_tool(Tool.from_function(get_booking_link))
 
+    # ─── System Monitoring Tools (Overseer) ─────────────────────
+    from core.mcp.tools.system_tools import (
+        get_recent_logs,
+        query_run_history,
+        get_system_health,
+        get_task_queue_status,
+        get_agent_error_rates,
+        get_knowledge_stats,
+        get_cache_performance,
+    )
+
+    mcp.add_tool(Tool.from_function(get_recent_logs))
+    mcp.add_tool(Tool.from_function(query_run_history))
+    mcp.add_tool(Tool.from_function(get_system_health))
+    mcp.add_tool(Tool.from_function(get_task_queue_status))
+    mcp.add_tool(Tool.from_function(get_agent_error_rates))
+    mcp.add_tool(Tool.from_function(get_knowledge_stats))
+    mcp.add_tool(Tool.from_function(get_cache_performance))
+
     logger.info(
         "mcp_server_created",
         extra={
             "server_name": name,
             "vertical_id": vertical_id,
-            "tool_count": 10,
+            "tool_count": 17,
         },
     )
 

@@ -219,3 +219,44 @@ class ArchitectAgentState(BaseAgentState, total=False):
     launch_status: Optional[str]  # pending, shadow_mode, live, failed
     launch_errors: list[str]
     launched_agent_ids: list[str]
+
+
+class OverseerAgentState(BaseAgentState, total=False):
+    """
+    State for the Overseer Agent — the SRE meta-agent.
+
+    Flow: collect_metrics → diagnose → plan_actions → human_review → execute_actions → report
+
+    The Overseer doesn't do sales work — it *watches the workers*.
+    """
+
+    # ---- Health Check Results ----
+    system_health: dict[str, Any]          # Full health report from get_system_health()
+    health_status: str                      # "healthy", "degraded", "critical"
+
+    # ---- Diagnostics ----
+    error_logs: list[dict[str, Any]]        # Recent error/warning logs
+    agent_error_rates: dict[str, Any]       # Per-agent failure analysis
+    task_queue_status: dict[str, Any]       # Queue depth and zombie count
+    cache_performance: dict[str, Any]       # LLM cache hit rates
+    knowledge_stats: dict[str, Any]         # Shared brain utilization
+
+    # ---- Issues Detected ----
+    issues: list[dict[str, Any]]            # [{severity, component, message, recommended_action}]
+    issue_count: int
+    critical_count: int
+
+    # ---- Diagnosis ----
+    diagnosis: str                          # LLM-generated diagnosis summary
+    root_causes: list[str]                  # Identified root causes
+    recommended_actions: list[dict[str, Any]]  # [{action, target, priority, reasoning}]
+
+    # ---- Actions ----
+    actions_planned: list[dict[str, Any]]   # Actions proposed to human
+    actions_approved: bool
+    actions_executed: list[dict[str, Any]]  # Actions completed
+    actions_failed: list[dict[str, Any]]    # Actions that failed
+
+    # ---- Report ----
+    report_summary: str                     # Human-readable status report
+    report_generated_at: str
