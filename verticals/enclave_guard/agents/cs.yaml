@@ -1,0 +1,94 @@
+# Customer Success Agent — Enclave Guard vertical
+#
+# The Account Manager: handles client onboarding, milestone
+# check-ins, churn prevention, and retention workflows.
+# Keeps clients engaged from Day 1 through ongoing relationship
+# management with personalized, LLM-generated communications.
+#
+# Pipeline: detect_signals → generate_outreach → schedule_followup →
+#           human_review → execute → report → END
+#
+# The CS Agent reads from the shared brain:
+#   - Client health signals (last contact, sentiment)
+#   - Invoice data (payment behavior as health proxy)
+#   - Proposal context (what was sold, scope)
+#
+# Check-in types:
+#   onboarding    → Welcome packet + kickoff scheduling
+#   30_day        → First milestone review
+#   60_day        → Progress assessment
+#   quarterly     → Strategic business review
+#   health_check  → At-risk re-engagement
+#
+# Churn risk scoring (days since last contact):
+#   0-30   → 0.3 (low risk)
+#   31-45  → 0.5 (moderate)
+#   46-60  → 0.7 (high)
+#   61-90  → 0.9 (critical)
+
+agent_id: cs_v1
+agent_type: cs
+name: "Customer Success Agent"
+description: "Manages client onboarding, retention, and proactive check-ins to prevent churn."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.6  # Warm: personalized but professional
+  max_tokens: 4096
+  context_window: 128000
+
+tools:
+  - search_knowledge
+  - save_insight
+  - send_email
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual  # Run weekly for check-ins, on-demand for onboarding
+  cron: "0 9 * * 1"  # Mondays at 9am
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Onboarding
+  onboarding_checklist:
+    - "Send welcome packet with team introductions"
+    - "Schedule kickoff call within 48 hours"
+    - "Share documentation and portal access"
+    - "Confirm project timeline and milestones"
+    - "Set up dedicated communication channel"
+    - "Make introductions to key team members"
+
+  # Churn thresholds (days → risk score)
+  risk_thresholds:
+    low: 30
+    moderate: 45
+    high: 60
+    critical: 90
+
+  # Check-in cadence
+  checkin_schedule:
+    onboarding: 0       # Day 0
+    first_review: 30    # Day 30
+    progress: 60        # Day 60
+    quarterly: 90       # Every 90 days
+    health_check: 45    # When risk score > 0.5
+
+  # Communication
+  default_sender: "success@enclaveguard.com"
+  escalation_email: "leadership@enclaveguard.com"

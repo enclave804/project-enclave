@@ -306,3 +306,67 @@ class AdCreative(BaseModel):
     call_to_action: str = "Learn More"
     variant_id: str = ""  # For A/B testing
     platform: str = "google"
+
+
+# ─── Finance & Operations ────────────────────────────────────────────
+
+
+class InvoiceRequest(BaseModel):
+    """Request to generate an invoice from an accepted proposal."""
+
+    proposal_id: str
+    company_name: str
+    contact_email: str
+    contact_name: str = ""
+    line_items: list[dict[str, Any]] = Field(default_factory=list)
+    total_amount: float = 0.0
+    currency: str = "usd"
+    due_days: int = 30  # Net 30 default
+    notes: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class InvoiceData(BaseModel):
+    """A generated/tracked invoice."""
+
+    invoice_id: str  # Stripe invoice ID or mock ID
+    proposal_id: str = ""
+    company_name: str = ""
+    contact_email: str = ""
+    total_amount: float = 0.0
+    currency: str = "usd"
+    status: str = "draft"  # draft, open, paid, overdue, void
+    due_date: str = ""  # ISO date
+    created_at: str = ""
+    paid_at: str = ""
+    stripe_url: str = ""  # Hosted invoice URL
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PaymentReminder(BaseModel):
+    """A payment reminder for an overdue invoice."""
+
+    invoice_id: str
+    company_name: str
+    contact_email: str
+    amount_due: float = 0.0
+    days_overdue: int = 0
+    tone: str = "polite"  # polite, firm, final
+    draft_text: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ClientRecord(BaseModel):
+    """A client record for the CS Agent."""
+
+    client_id: str
+    company_name: str
+    contact_name: str = ""
+    contact_email: str = ""
+    proposal_id: str = ""
+    onboarded_at: str = ""  # ISO date
+    last_contact_at: str = ""  # ISO date
+    sentiment_score: float = 0.5  # 0-1
+    status: str = "active"  # active, at_risk, churned
+    notes: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)

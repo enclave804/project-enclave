@@ -526,3 +526,102 @@ class AdsStrategyAgentState(BaseAgentState, total=False):
     # ---- Report ----
     report_summary: str
     report_generated_at: str
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Phase 12: Operations Agents
+# ──────────────────────────────────────────────────────────────────────
+
+
+class FinanceAgentState(BaseAgentState, total=False):
+    """
+    State for the Finance Agent — The CFO.
+
+    Flow: scan_invoices → identify_overdue → draft_reminders →
+          human_review → send_reminders → generate_pnl → report → END
+
+    The Finance Agent automates the post-sale money flow: generates
+    invoices from accepted proposals, chases overdue payments, and
+    calculates monthly P&L from all revenue streams.
+    """
+
+    # ---- Invoice Context ----
+    active_invoices: list[dict[str, Any]]      # All open invoices
+    overdue_invoices: list[dict[str, Any]]     # Unpaid past due date
+    paid_invoices: list[dict[str, Any]]        # Recently paid
+    new_proposal_ids: list[str]                # Accepted proposals needing invoices
+
+    # ---- Invoice Generation ----
+    invoices_to_create: list[dict[str, Any]]   # Proposals → invoice data
+    invoices_created: list[dict[str, Any]]     # Created Stripe invoices
+    invoices_sent: int
+
+    # ---- Payment Reminders ----
+    reminder_drafts: list[dict[str, Any]]      # [{invoice_id, client, amount, tone, draft_text}]
+    reminders_approved: bool
+    reminders_sent: int
+
+    # ---- Financial Metrics ----
+    total_revenue: float                       # All-time or period
+    accounts_receivable: float                 # Outstanding invoices
+    monthly_recurring: float                   # MRR estimate
+    service_revenue: float                     # From proposals/invoices
+    commerce_revenue: float                    # From e-commerce
+    total_costs: float                         # API costs, infrastructure
+    net_profit: float
+    pnl_data: dict[str, Any]                   # Full P&L breakdown
+
+    # ---- Review ----
+    finance_actions_approved: bool
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str
+
+
+class CustomerSuccessAgentState(BaseAgentState, total=False):
+    """
+    State for the Customer Success Agent — The Account Manager.
+
+    Flow: detect_signals → generate_outreach → schedule_followup →
+          human_review → execute → report → END
+
+    The CS Agent automates client onboarding, check-ins, and churn
+    prevention. Triggered when proposals are accepted or on periodic
+    schedule for retention monitoring.
+    """
+
+    # ---- Client Context ----
+    active_clients: list[dict[str, Any]]       # All active clients
+    new_clients: list[dict[str, Any]]          # Recently signed (needs onboarding)
+    at_risk_clients: list[dict[str, Any]]      # No contact in 30+ days
+    client_id: str                             # Current client being processed
+
+    # ---- Onboarding ----
+    onboarding_email_draft: str
+    onboarding_checklist: list[str]
+    kickoff_meeting_requested: bool
+    kickoff_meeting_scheduled: bool
+    welcome_packet_sent: bool
+
+    # ---- Check-ins ----
+    checkin_type: str                          # "30_day", "60_day", "quarterly", "health_check"
+    checkin_drafts: list[dict[str, Any]]       # [{client, email_draft, tone}]
+    last_contact_dates: dict[str, str]         # {client_id: ISO date}
+    sentiment_scores: dict[str, float]         # {client_id: 0.0-1.0}
+
+    # ---- Retention ----
+    churn_risk_score: float                    # 0.0-1.0
+    retention_actions: list[dict[str, Any]]    # Suggested actions
+
+    # ---- Review ----
+    cs_actions_approved: bool
+    human_edits: list[dict[str, Any]]
+
+    # ---- Execution ----
+    emails_sent: int
+    meetings_scheduled: int
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str

@@ -1,0 +1,78 @@
+# Finance Agent — Enclave Guard vertical
+#
+# The CFO layer: handles B2B invoicing, payment tracking,
+# overdue collections, and P&L reporting. Converts accepted
+# proposals into Stripe invoices and chases overdue payments
+# with graduated tone escalation.
+#
+# Pipeline: scan_invoices → identify_overdue → draft_reminders →
+#           human_review → send_reminders → generate_pnl → report → END
+#
+# The Finance Agent reads from the shared brain:
+#   - Accepted proposals (trigger invoice generation)
+#   - Client health signals (adjust collection tone)
+#   - Revenue data (monthly P&L calculations)
+#
+# Reminder tones (auto-selected by days overdue):
+#   polite    →  7-14 days past due
+#   firm      → 15-30 days past due
+#   final     → 31+ days past due
+
+agent_id: finance_v1
+agent_type: finance
+name: "Finance Agent"
+description: "Manages invoicing, payment tracking, overdue collections, and P&L reporting."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.3  # Conservative: financial accuracy over creativity
+  max_tokens: 4096
+  context_window: 128000
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual  # Run daily for overdue tracking, on-demand for invoicing
+  cron: "0 8 * * 1-5"  # Weekdays at 8am
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Invoice defaults
+  default_currency: "usd"
+  default_due_days: 30
+  default_description: "Cybersecurity Professional Services"
+
+  # Budget safety caps (in cents)
+  max_invoice_amount: 10000000  # $100,000.00
+
+  # Overdue tracking
+  overdue_threshold_days: 7
+  reminder_schedule:
+    polite_days: 7
+    firm_days: 15
+    final_days: 31
+
+  # P&L settings
+  report_currency: "usd"
+  cost_tracking:
+    api_costs_source: "usage_metrics"
+    infra_costs_source: "manual"
