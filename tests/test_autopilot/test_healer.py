@@ -394,3 +394,98 @@ class TestErrorPatterns:
             # ERROR_PATTERNS maps pattern -> severity string directly
             assert isinstance(value, str)
             assert value in valid_severities
+
+
+# ── Integration: Full Crash-to-Fix Cycle ─────────────────────
+
+
+class TestCrashToFixCycle:
+    """Integration test: crash → diagnosis → suggest → apply."""
+
+    def test_rate_limit_full_cycle(self):
+        db = MockDB()
+        h = SelfHealer(db=db)
+        # Step 1: Analyze
+        diagnosis = h.analyze_crash("outreach_v1", "HTTPError: 429 rate limit exceeded")
+        assert diagnosis["category"] == "rate_limit"
+        # Step 2: Suggest
+        fixes = h.suggest_fix("outreach_v1", diagnosis)
+        assert len(fixes) >= 1
+        assert fixes[0]["action"] == "update_config"
+        # Step 3: Apply
+        result = h.apply_config_fix("outreach_v1", fixes[0])
+        assert result["status"] != "rejected"
+
+    def test_circuit_breaker_full_cycle(self):
+        db = MockDB()
+        h = SelfHealer(db=db)
+        diagnosis = h.analyze_crash("seo_v1", "circuit_breaker tripped after 5 consecutive_errors")
+        assert diagnosis["category"] == "circuit_breaker"
+        fixes = h.suggest_fix("seo_v1", diagnosis)
+        assert len(fixes) >= 1
+        result = h.apply_config_fix("seo_v1", fixes[0])
+        assert result["status"] != "rejected"
+
+    def test_code_error_disabled_needs_approval(self):
+        db = MockDB()
+        h = SelfHealer(db=db)
+        diagnosis = h.analyze_crash("test_agent", "ImportError: cannot import 'broken_module'")
+        assert diagnosis["category"] == "code"
+        fixes = h.suggest_fix("test_agent", diagnosis)
+        assert len(fixes) >= 1
+        result = h.apply_config_fix("test_agent", fixes[0])
+        # Disabling agent should need approval
+        assert result["status"] == "pending_approval"
+
+    def test_auth_error_full_cycle(self):
+        db = MockDB()
+        h = SelfHealer(db=db)
+        diagnosis = h.analyze_crash("ads_v1", "AuthenticationError: 401 Unauthorized")
+        assert diagnosis["category"] == "auth"
+        fixes = h.suggest_fix("ads_v1", diagnosis)
+        assert len(fixes) >= 1
+        # Auth errors fall through to "investigate" (credentials need manual update)
+        assert fixes[0]["action"] == "investigate"
+        assert fixes[0]["requires_approval"] is True
+
+
+# ── Edge Cases ──────────────────────────────────────────────
+
+
+class TestEdgeCases:
+    def test_analyze_multiline_error(self):
+        db = MockDB()
+        h = SelfHealer(db=db)
+        error = "Traceback (most recent call last):\n  File 'main.py', line 42\n  rate_limit exceeded"
+        result = h.analyze_crash("agent_x", error)
+        assert result["category"] == "rate_limit"
+
+    def test_analyze_mixed_case_error(self):
+        db = MockDB()
+        h = SelfHealer(db=db)
+        result = h.analyze_crash("agent_x", "RATE_LIMIT exceeded!")
+        assert result["category"] == "rate_limit"
+
+    def test_suggest_fix_returns_priority(self):
+        db = MockDB()
+        h = SelfHealer(db=db)
+        diagnosis = {"agent_id": "a1", "category": "rate_limit", "severity": "medium"}
+        fixes = h.suggest_fix("a1", diagnosis)
+        assert all("priority" in f for f in fixes)
+
+    def test_safe_key_nested_params(self):
+        db = MockDB()
+        h = SelfHealer(db=db)
+        # Any key under params.* should be safe
+        assert h._is_safe_key("params.custom_key_123") is True
+        assert h._is_safe_key("params.nested.deep.key") is True
+
+    def test_diagnosis_includes_all_fields(self):
+        db = MockDB()
+        h = SelfHealer(db=db)
+        result = h.analyze_crash("agent", "timeout connecting to server")
+        required_keys = {
+            "agent_id", "diagnosis", "severity", "root_cause",
+            "category", "is_transient", "recommended_action",
+        }
+        assert required_keys.issubset(set(result.keys()))

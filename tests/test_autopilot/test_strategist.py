@@ -543,6 +543,91 @@ class TestMarketTrends:
 # ── Repr ──────────────────────────────────────────────────────
 
 
+# ── Edge Cases ──────────────────────────────────────────────
+
+
+class TestEdgeCases:
+    def test_detect_no_opportunities_few_runs(self, strategist):
+        """Agents with too few runs should be skipped."""
+        perf = {
+            "agents": [
+                {"agent_id": "a1", "total_runs": 3, "success_rate": 0.1},
+            ],
+            "budget_summary": {},
+            "experiments": [],
+            "lead_stats": {},
+            "insights_count": 0,
+            "insight_categories": {},
+        }
+        opps = strategist.detect_opportunities(perf)
+        assert len(opps) == 0
+
+    def test_detect_no_budget_issue_zero_spend(self, strategist):
+        """Zero spend should not trigger budget inefficiency."""
+        perf = {
+            "agents": [],
+            "budget_summary": {"roas": 0, "total_spend": 0, "total_revenue": 0},
+            "experiments": [],
+            "lead_stats": {},
+            "insights_count": 0,
+            "insight_categories": {},
+        }
+        opps = strategist.detect_opportunities(perf)
+        types = [o["type"] for o in opps]
+        assert "budget_inefficiency" not in types
+
+    def test_detect_high_roas_opportunity(self, strategist):
+        """Excellent ROAS should create a scale-up opportunity."""
+        perf = {
+            "agents": [],
+            "budget_summary": {"roas": 5.0, "total_spend": 1000, "total_revenue": 5000},
+            "experiments": [],
+            "lead_stats": {},
+            "insights_count": 0,
+            "insight_categories": {},
+        }
+        opps = strategist.detect_opportunities(perf)
+        types = [o["type"] for o in opps]
+        assert "high_performing_agent" in types
+
+    def test_propose_experiments_from_multiple_types(self, strategist):
+        opps = [
+            {
+                "type": "underperforming_agent",
+                "description": "Low",
+                "potential_impact": "high",
+                "confidence": 0.8,
+                "suggested_action": "Fix",
+                "details": {"agent_id": "a1", "success_rate": 0.3},
+            },
+            {
+                "type": "audience_mismatch",
+                "description": "Bad targeting",
+                "potential_impact": "medium",
+                "confidence": 0.7,
+                "suggested_action": "Refine",
+                "details": {"qualified_pct": 0.1},
+            },
+        ]
+        proposals = strategist.propose_experiments(opps)
+        assert len(proposals) == 2
+        metrics = {p["metric"] for p in proposals}
+        assert "success_rate" in metrics
+        assert "qualified_rate" in metrics
+
+    def test_scan_performance_period_passed_through(self, strategist):
+        result = strategist.scan_performance("v1", days=14)
+        assert result["period_days"] == 14
+
+    def test_generate_report_no_agents(self, strategist):
+        """Report should handle no agent data gracefully."""
+        report = strategist.generate_strategy_report(
+            {"agents": [], "budget_summary": {}, "lead_stats": {}},
+            [], [],
+        )
+        assert "No agent metrics" in report
+
+
 class TestRepr:
     def test_repr(self, strategist):
         r = repr(strategist)

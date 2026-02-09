@@ -667,7 +667,7 @@ class AutopilotAgent(BaseAgent):
                     target = action.get("target", "")
                     # Build a fix dict from the action
                     fix = {
-                        "action": "config_fix",
+                        "action": "update_config",
                         "parameter": action.get("parameter", "enabled"),
                         "old_value": action.get("old_value"),
                         "new_value": action.get("new_value", True),

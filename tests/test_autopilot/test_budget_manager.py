@@ -539,3 +539,100 @@ class TestBuildReasoning:
     def test_maintain_reasoning(self, budget_mgr):
         reasoning = budget_mgr._build_reasoning(2.0, 0, "good")
         assert "Maintain" in reasoning
+
+
+# ── Integration: Full Budget Cycle ───────────────────────────
+
+
+class TestBudgetFullCycle:
+    """Integration test: summary → ROAS → recommend → apply."""
+
+    def test_full_recommendation_cycle(self):
+        from core.optimization.budget_manager import BudgetManager
+        db = MockDB()
+        mgr = BudgetManager(db=db)
+
+        # Manually create campaigns (since get_spend_summary needs DB data)
+        campaigns = [
+            {"campaign_id": "c1", "name": "Winner", "spend": 400, "revenue": 2000, "platform": "google"},
+            {"campaign_id": "c2", "name": "Loser", "spend": 600, "revenue": 300, "platform": "facebook"},
+        ]
+
+        # Step 1: Compute ROAS
+        roas_data = mgr.compute_roas(campaigns)
+        assert roas_data[0]["roas_tier"] == "excellent"  # c1 has 5.0x ROAS
+        assert roas_data[1]["roas_tier"] == "poor"         # c2 has 0.5x ROAS (≥ MIN_VIABLE_ROAS)
+
+        # Step 2: Recommend reallocation
+        recs = mgr.recommend_reallocation(1000.0, roas_data)
+        assert len(recs) == 2
+        # Total recommended should equal total budget
+        total_rec = sum(r["recommended_budget"] for r in recs)
+        assert abs(total_rec - 1000.0) < 1.0
+
+        # Step 3: Apply
+        result = mgr.apply_reallocation(recs)
+        assert result["applied"] + result["skipped"] == 2
+
+    def test_single_campaign_gets_full_budget(self):
+        from core.optimization.budget_manager import BudgetManager
+        db = MockDB()
+        mgr = BudgetManager(db=db)
+
+        campaigns = [
+            {"campaign_id": "c1", "spend": 500, "revenue": 1500},
+        ]
+        roas_data = mgr.compute_roas(campaigns)
+        recs = mgr.recommend_reallocation(500.0, roas_data)
+        assert len(recs) == 1
+        assert abs(recs[0]["recommended_budget"] - 500.0) < 1.0
+
+    def test_zero_budget_returns_empty(self):
+        from core.optimization.budget_manager import BudgetManager
+        db = MockDB()
+        mgr = BudgetManager(db=db)
+        recs = mgr.recommend_reallocation(0, [{"spend": 100}])
+        assert recs == []
+
+
+# ── Budget Edge Cases ────────────────────────────────────────
+
+
+class TestBudgetEdgeCases:
+    def test_roas_with_very_small_spend(self):
+        from core.optimization.budget_manager import BudgetManager, MIN_SPEND_FOR_ROAS
+        db = MockDB()
+        mgr = BudgetManager(db=db)
+        campaigns = [
+            {"campaign_id": "c1", "spend": MIN_SPEND_FOR_ROAS - 1, "revenue": 100},
+        ]
+        result = mgr.compute_roas(campaigns)
+        assert result[0]["roas"] == 0.0  # Below minimum spend
+
+    def test_reallocation_all_equal_roas(self):
+        from core.optimization.budget_manager import BudgetManager
+        db = MockDB()
+        mgr = BudgetManager(db=db)
+        campaigns = [
+            {"campaign_id": "c1", "spend": 100, "revenue": 200, "roas": 2.0},
+            {"campaign_id": "c2", "spend": 100, "revenue": 200, "roas": 2.0},
+        ]
+        recs = mgr.recommend_reallocation(200.0, campaigns)
+        # With equal ROAS, budgets should be roughly equal
+        budgets = [r["recommended_budget"] for r in recs]
+        assert abs(budgets[0] - budgets[1]) < 1.0
+
+    def test_compliance_at_limit(self):
+        from core.optimization.budget_manager import BudgetManager
+        db = MockDB()
+        mgr = BudgetManager(db=db)
+        result = mgr.check_budget_compliance(50000.0)
+        assert result["within_limit"] is True
+        assert result["remaining"] == 0.0
+
+    def test_compliance_over_limit(self):
+        from core.optimization.budget_manager import BudgetManager
+        db = MockDB()
+        mgr = BudgetManager(db=db)
+        result = mgr.check_budget_compliance(60000.0)
+        assert result["within_limit"] is False
