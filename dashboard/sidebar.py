@@ -107,6 +107,91 @@ def _get_health_summary(db: Any) -> dict[str, Any]:
                 "agents_shadow": 0, "agents_tripped": 0, "failed_tasks": 0}
 
 
+def _render_org_switcher(colors: dict[str, str]) -> None:
+    """
+    Render the organization switcher in the sidebar.
+
+    Only visible when enterprise auth is enabled and the user
+    belongs to multiple organizations.
+    """
+    import os
+
+    if not os.environ.get("SUPABASE_AUTH_ENABLED", "").lower() in ("true", "1", "yes"):
+        return
+
+    user_orgs = st.session_state.get("auth_user_orgs", [])
+    if not user_orgs:
+        return
+
+    st.sidebar.markdown(
+        f'<div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; '
+        f'color: {colors["text_tertiary"]}; font-weight: 600; margin-bottom: 4px;">Organization</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Build org options
+    org_options = {org.get("name", org.get("slug", "Unknown")): org for org in user_orgs}
+    org_names = list(org_options.keys())
+
+    # Get current selection
+    current_org = st.session_state.get("current_org", {})
+    current_name = current_org.get("name", org_names[0] if org_names else "")
+    default_idx = org_names.index(current_name) if current_name in org_names else 0
+
+    selected_name = st.sidebar.selectbox(
+        "Organization",
+        org_names,
+        index=default_idx,
+        label_visibility="collapsed",
+    )
+
+    selected_org = org_options[selected_name]
+
+    # Update session state if org changed
+    if selected_org.get("id") != st.session_state.get("active_org_id"):
+        st.session_state["current_org"] = selected_org
+        st.session_state["active_org_id"] = selected_org.get("id")
+        st.session_state["auth_context"] = {
+            "org_id": selected_org.get("id"),
+            "user_id": st.session_state.get("auth_user_id", ""),
+            "role": selected_org.get("user_role", "viewer"),
+            "org_slug": selected_org.get("slug", ""),
+            "plan_tier": selected_org.get("plan_tier", "free"),
+        }
+
+    # Show plan tier badge
+    plan_tier = selected_org.get("plan_tier", "free")
+    tier_colors = {
+        "free": colors.get("text_tertiary", "#8B8B8B"),
+        "starter": colors.get("status_blue", "#3B82F6"),
+        "pro": colors.get("status_purple", "#8B5CF6"),
+        "enterprise": colors.get("status_green", "#10B981"),
+    }
+    tier_color = tier_colors.get(plan_tier, colors.get("text_tertiary", "#8B8B8B"))
+
+    st.sidebar.markdown(
+        f'<div style="display: inline-block; font-size: 0.6rem; text-transform: uppercase; '
+        f'letter-spacing: 0.06em; color: {tier_color}; font-weight: 700; '
+        f'padding: 2px 8px; border: 1px solid {tier_color}; border-radius: 4px; '
+        f'margin-bottom: 8px;">{plan_tier.upper()}</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Show user email
+    user_email = st.session_state.get("auth_email", "")
+    if user_email:
+        st.sidebar.markdown(
+            f'<div style="font-size: 0.65rem; color: {colors["text_tertiary"]}; '
+            f'margin-bottom: 8px;">{user_email}</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.sidebar.markdown(
+        f'<div style="height: 1px; background: {colors["border_subtle"]}; margin: 12px 0;"></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_sidebar(
     show_version: bool = True,
     show_health: bool = True,
@@ -134,6 +219,9 @@ def render_sidebar(
         """,
         unsafe_allow_html=True,
     )
+
+    # ─── Org Switcher (Enterprise Mode) ─────────────────
+    _render_org_switcher(COLORS)
 
     # ─── Vertical Selector ────────────────────────────────
     st.sidebar.markdown(

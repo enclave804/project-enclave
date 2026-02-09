@@ -53,6 +53,12 @@ genesis_app = typer.Typer(
 )
 app.add_typer(genesis_app, name="genesis")
 
+api_app = typer.Typer(
+    name="api",
+    help="Enterprise API Gateway — start and manage the REST API.",
+)
+app.add_typer(api_app, name="api")
+
 console = Console()
 
 # Configure logging
@@ -1567,6 +1573,62 @@ def genesis_credentials(
             f"[red]Missing {len(missing)} required credential(s):[/] "
             f"{', '.join(missing)}"
         )
+
+
+# ── API Gateway Commands ──────────────────────────────────────────
+
+
+@api_app.command("start")
+def api_start(
+    port: int = typer.Option(8000, help="Port to run the API on"),
+    host: str = typer.Option("0.0.0.0", help="Host to bind to"),
+    vertical: str = typer.Option("enclave_guard", help="Default vertical ID"),
+    reload: bool = typer.Option(False, help="Enable auto-reload for development"),
+):
+    """Start the Enterprise API Gateway."""
+    console.print(
+        Panel(
+            f"[bold]Starting Sovereign Venture Engine API[/]\n\n"
+            f"  Host:     {host}:{port}\n"
+            f"  Vertical: {vertical}\n"
+            f"  Docs:     http://{host}:{port}/api/docs\n"
+            f"  Reload:   {'enabled' if reload else 'disabled'}",
+            title="◆ API Gateway",
+            border_style="blue",
+        )
+    )
+
+    try:
+        import uvicorn
+        from core.integrations.supabase_client import EnclaveDB
+        from core.enterprise.api_server import create_api_app
+
+        db = EnclaveDB(vertical)
+
+        # Try to create embedder for RAG search
+        embedder = None
+        try:
+            from core.rag.embeddings import get_embedder
+            embedder = get_embedder()
+        except Exception:
+            console.print("[yellow]⚠ Embedder not available — RAG search disabled[/]")
+
+        api_application = create_api_app(db=db, embedder=embedder)
+
+        uvicorn.run(
+            api_application,
+            host=host,
+            port=port,
+            log_level="info",
+        )
+
+    except ImportError as e:
+        console.print(f"[red]Missing dependency: {e}[/]")
+        console.print("Install with: pip install 'fastapi' 'uvicorn[standard]'")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        console.print(f"[red]API start failed: {e}[/]")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,10 @@ Dashboard Authentication — The Fortress Gate.
 Provides password-based authentication for the Sovereign Cockpit.
 Uses Streamlit's session_state for persistence across reruns.
 
+Supports two modes:
+1. Legacy mode (default): Shared password via DASHBOARD_PASSWORD env var
+2. Enterprise mode: Supabase Auth with per-user login (when SUPABASE_AUTH_ENABLED=true)
+
 Security model:
 - Password verified against DASHBOARD_PASSWORD env var or st.secrets
 - Session state tracks authentication status
@@ -15,9 +19,15 @@ Usage:
     from dashboard.auth import require_auth
     require_auth()  # Blocks page render until authenticated
 
+    # Enterprise mode — get current user/org info:
+    from dashboard.auth import get_current_user, get_current_org
+    user = get_current_user()  # Returns AuthContext or None
+    org = get_current_org()    # Returns org dict or None
+
 Configuration:
     Option A: st.secrets["DASHBOARD_PASSWORD"]
     Option B: DASHBOARD_PASSWORD environment variable
+    Option C: SUPABASE_AUTH_ENABLED=true (enables Supabase Auth)
     If neither is set, authentication is DISABLED with a warning.
 """
 
@@ -185,5 +195,164 @@ def require_auth() -> None:
                         f"🔒 Too many failed attempts. "
                         f"Locked for {COOLDOWN_SECONDS} seconds."
                     )
+
+    st.stop()
+
+
+# ── Enterprise Auth (Dual-Mode) ──────────────────────────────
+
+
+def _is_enterprise_auth_enabled() -> bool:
+    """Check if Supabase Auth enterprise mode is enabled."""
+    return os.environ.get("SUPABASE_AUTH_ENABLED", "").lower() in ("true", "1", "yes")
+
+
+def get_current_user() -> Optional[dict]:
+    """
+    Get the current authenticated user context.
+
+    Returns:
+        AuthContext-like dict with org_id, user_id, role, org_slug, plan_tier.
+        Returns None if not in enterprise mode or not authenticated.
+    """
+    try:
+        import streamlit as st
+        if not _is_enterprise_auth_enabled():
+            return None
+        return st.session_state.get("auth_context")
+    except Exception:
+        return None
+
+
+def get_current_org() -> Optional[dict]:
+    """
+    Get the current organization for the authenticated user.
+
+    Returns:
+        Organization dict or None.
+    """
+    try:
+        import streamlit as st
+        if not _is_enterprise_auth_enabled():
+            return None
+        return st.session_state.get("current_org")
+    except Exception:
+        return None
+
+
+def require_auth_v2() -> None:
+    """
+    Enterprise authentication — dual-mode.
+
+    If SUPABASE_AUTH_ENABLED=true: shows email/password login using
+    Supabase Auth. Otherwise: falls back to legacy shared password.
+    """
+    if not _is_enterprise_auth_enabled():
+        require_auth()
+        return
+
+    import streamlit as st
+
+    # Already authenticated
+    if st.session_state.get("authenticated", False):
+        return
+
+    st.markdown("## 🔐 Sovereign Cockpit — Sign In")
+    st.markdown("Sign in with your email and password.")
+
+    # Rate limiting check
+    if _is_rate_limited(st):
+        remaining = COOLDOWN_SECONDS - (
+            time.time() - st.session_state.get("auth_last_failed_at", 0)
+        )
+        st.error(
+            f"⏳ Too many failed attempts. Please wait {int(remaining)} seconds."
+        )
+        st.stop()
+        return
+
+    with st.form("enterprise_login_form"):
+        email = st.text_input(
+            "Email",
+            placeholder="you@company.com",
+        )
+        password = st.text_input(
+            "Password",
+            type="password",
+            placeholder="Enter your password",
+        )
+        submitted = st.form_submit_button("🔓 Sign In")
+
+        if submitted and email and password:
+            try:
+                from supabase import create_client
+
+                url = os.environ.get("SUPABASE_URL", "")
+                anon_key = os.environ.get("SUPABASE_ANON_KEY", "")
+
+                if not url or not anon_key:
+                    st.error("Supabase Auth not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.")
+                    st.stop()
+                    return
+
+                client = create_client(url, anon_key)
+                auth_response = client.auth.sign_in_with_password({
+                    "email": email,
+                    "password": password,
+                })
+
+                if auth_response and auth_response.user:
+                    user_id = str(auth_response.user.id)
+
+                    # Load user's organizations
+                    from core.enterprise.auth_manager import AuthManager
+                    from core.integrations.supabase_client import EnclaveDB
+
+                    db = EnclaveDB("enclave_guard")
+                    auth_mgr = AuthManager(db)
+                    user_orgs = auth_mgr.get_user_orgs(user_id)
+
+                    st.session_state["authenticated"] = True
+                    st.session_state["auth_user_id"] = user_id
+                    st.session_state["auth_email"] = email
+                    st.session_state["auth_user_orgs"] = user_orgs
+                    st.session_state["auth_timestamp"] = datetime.now(
+                        timezone.utc
+                    ).isoformat()
+
+                    # Set first org as current
+                    if user_orgs:
+                        first_org = user_orgs[0]
+                        st.session_state["current_org"] = first_org
+                        st.session_state["active_org_id"] = first_org.get("id")
+                        st.session_state["auth_context"] = {
+                            "org_id": first_org.get("id"),
+                            "user_id": user_id,
+                            "role": first_org.get("user_role", "viewer"),
+                            "org_slug": first_org.get("slug", ""),
+                            "plan_tier": first_org.get("plan_tier", "free"),
+                        }
+
+                    logger.info(
+                        "dashboard_enterprise_auth_success",
+                        extra={
+                            "user_id": user_id,
+                            "email": email,
+                            "org_count": len(user_orgs),
+                        },
+                    )
+                    st.rerun()
+                else:
+                    _record_failed_attempt(st)
+                    st.error("❌ Invalid email or password.")
+
+            except Exception as e:
+                _record_failed_attempt(st)
+                error_msg = str(e)
+                if "Invalid login credentials" in error_msg:
+                    st.error("❌ Invalid email or password.")
+                else:
+                    logger.error(f"Enterprise auth error: {e}")
+                    st.error("❌ Authentication failed. Please try again.")
 
     st.stop()
