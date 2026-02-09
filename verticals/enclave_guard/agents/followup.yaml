@@ -1,0 +1,38 @@
+agent_id: followup_v1
+agent_type: followup
+name: "Follow-Up Agent"
+description: "Manages multi-touch follow-up email sequences to keep prospects engaged after initial outreach."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.6
+  max_tokens: 4096
+  context_window: 128000
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: scheduled
+  cron: "0 */4 * * *"   # Every 4 hours
+
+system_prompt_path: ""
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "Enclave Guard"
+  max_steps: 5
+  interval_days: 3
+  min_confidence: 0.6

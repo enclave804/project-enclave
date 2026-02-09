@@ -669,3 +669,113 @@ class AutopilotAgentState(BaseAgentState, total=False):
     # ---- Report ----
     report_summary: str
     report_generated_at: str
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Phase 16: Sales Pipeline Agents — The Money Machine
+# ══════════════════════════════════════════════════════════════════════
+
+
+class FollowUpAgentState(BaseAgentState, total=False):
+    """
+    State for the Follow-Up Agent — The Persistence Engine.
+
+    Flow: load_sequences → generate_followups → human_review →
+          send_followups → report → END
+
+    The Follow-Up Agent manages multi-touch email sequences,
+    ensuring no lead falls through the cracks after initial outreach.
+    It reads active sequences, generates personalized follow-up emails,
+    and tracks progression through the drip campaign.
+    """
+
+    # ---- Sequence Data ----
+    active_sequences: list[dict[str, Any]]      # All active sequences
+    due_sequences: list[dict[str, Any]]         # Sequences due for next touch
+    total_sequences: int
+
+    # ---- Follow-Up Drafts ----
+    draft_followups: list[dict[str, Any]]       # [{sequence_id, step, subject, body, contact_email}]
+    followups_approved: bool
+    human_edits: list[dict[str, Any]]
+
+    # ---- Execution Results ----
+    followups_sent: int
+    sequences_completed: int                     # Reached max_steps
+    sequences_paused: int                        # Paused due to reply/issue
+    reply_detected: bool                         # Any sequence got a reply
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str
+
+
+class MeetingSchedulerAgentState(BaseAgentState, total=False):
+    """
+    State for the Meeting Scheduler Agent — The Calendar Manager.
+
+    Flow: check_requests → propose_times → human_review →
+          send_invites → report → END
+
+    The Meeting Scheduler handles booking meetings with prospects,
+    sending calendar invites, and tracking confirmations. It bridges
+    the gap between a warm reply and an actual discovery call.
+    """
+
+    # ---- Meeting Requests ----
+    pending_requests: list[dict[str, Any]]      # Inbound meeting requests
+    total_requests: int
+
+    # ---- Proposed Meetings ----
+    proposed_meetings: list[dict[str, Any]]     # [{contact, times, type, duration}]
+    meetings_approved: bool
+    human_edits: list[dict[str, Any]]
+
+    # ---- Execution Results ----
+    invites_sent: int
+    meetings_confirmed: int
+    meetings_cancelled: int
+    calendar_links: list[str]
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str
+
+
+class SalesPipelineAgentState(BaseAgentState, total=False):
+    """
+    State for the Sales Pipeline Agent — The Deal Tracker.
+
+    Flow: scan_pipeline → analyze_deals → recommend_actions →
+          human_review → execute_actions → report → END
+
+    The Sales Pipeline Agent monitors all opportunities through their
+    lifecycle stages (prospect → qualified → proposal → negotiation →
+    closed_won/closed_lost), identifies stalled or at-risk deals,
+    and recommends actions to keep the pipeline flowing.
+    """
+
+    # ---- Pipeline Data ----
+    opportunities: list[dict[str, Any]]         # All active opportunities
+    stage_metrics: dict[str, Any]               # {stage: {count, value, avg_age}}
+    total_pipeline_value: float                  # Total value in cents
+
+    # ---- Analysis ----
+    stalled_deals: list[dict[str, Any]]         # No activity in stale_days
+    at_risk_deals: list[dict[str, Any]]         # Likely to be lost
+    hot_deals: list[dict[str, Any]]             # High probability close
+
+    # ---- Recommendations ----
+    recommended_actions: list[dict[str, Any]]   # [{deal_id, action, reasoning, priority}]
+    actions_approved: bool
+    actions_executed: list[dict[str, Any]]
+    actions_failed: list[dict[str, Any]]
+
+    # ---- Results ----
+    deals_moved: int                             # Stage transitions executed
+    deals_won: int
+    deals_lost: int
+
+    # ---- Report ----
+    report_summary: str
+    report_generated_at: str

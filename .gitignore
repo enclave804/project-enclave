@@ -42,6 +42,9 @@ sandbox_logs/*.jsonl
 # Testing
 .pytest_cache/
 
+# Storage (recordings, local data)
+storage/
+
 # Claude Code
 .claude/
 .audio_cache/

@@ -1,0 +1,39 @@
+agent_id: meeting_scheduler_v1
+agent_type: meeting_scheduler
+name: "Meeting Scheduler Agent"
+description: "Books meetings with prospects, sends calendar invites, and tracks confirmations."
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.5
+  max_tokens: 4096
+  context_window: 128000
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  cron: "0 9 * * 1-5"   # Weekdays at 9 AM (fallback check)
+
+system_prompt_path: ""
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "Enclave Guard"
+  default_duration: 30
+  working_hours_start: 9
+  working_hours_end: 17
+  timezone: "America/New_York"
