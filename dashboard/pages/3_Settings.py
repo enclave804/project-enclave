@@ -182,7 +182,7 @@ with creds_tab:
             ("ANTHROPIC_API_KEY", "Anthropic Claude API"),
             ("OPENAI_API_KEY", "OpenAI (Embeddings)"),
             ("SUPABASE_URL", "Supabase URL"),
-            ("SUPABASE_KEY", "Supabase API Key"),
+            ("SUPABASE_SERVICE_KEY", "Supabase Service Key"),
         ],
         "Outreach": [
             ("APOLLO_API_KEY", "Apollo (Lead Data)"),

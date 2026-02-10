@@ -41,7 +41,7 @@ services:
       dockerfile: infrastructure/Dockerfile
     restart: unless-stopped
     env_file:
-      - .env
+      - ../.env
     environment:
       - N8N_BASE_URL=http://n8n:5678
     volumes:
@@ -50,6 +50,23 @@ services:
     depends_on:
       n8n:
         condition: service_healthy
+
+  # --------------------------------------------------------------------------
+  # Dashboard - Streamlit Web UI
+  # --------------------------------------------------------------------------
+  dashboard:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    env_file:
+      - ../.env
+    volumes:
+      - ../verticals:/app/verticals
+      - ../core:/app/core
+      - ../dashboard:/app/dashboard
 
 volumes:
   n8n_data:

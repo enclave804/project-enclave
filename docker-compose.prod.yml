@@ -24,12 +24,14 @@ services:
     ports:
       - "${DASHBOARD_PORT:-8501}:8501"
     env_file:
-      - .env.prod
+      - .env
     environment:
       - ENCLAVE_ENV=production
       - STREAMLIT_SERVER_HEADLESS=true
       - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
     volumes:
+      # Mount .env so load_dotenv() can find it at /app/.env
+      - ./.env:/app/.env:ro
       # Persist sandbox logs for audit trail
       - sandbox_logs:/app/sandbox_logs
       # Persist browser session recordings
