@@ -1,0 +1,49 @@
+# Knowledge Base Agent — PrintBiz vertical
+#
+# The Librarian: scans recent print jobs, client interactions,
+# and design feedback to surface patterns in material performance,
+# common design issues, and pricing trends.
+#
+# Pipeline: scan_recent_data → cluster_patterns → draft_articles →
+#           human_review → publish_to_rag → END
+#
+# Runs weekly (Friday 6 AM) so the team enters Monday with
+# fresh intelligence on printing trends and client needs.
+
+agent_id: knowledge_base_v1
+agent_type: knowledge_base
+name: "PrintBiz Knowledge Base Agent"
+description: "Scans recent print jobs and interactions to build reusable knowledge on materials, designs, and pricing."
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 6 * * 5"  # Every Friday at 6 AM
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  scan_period_days: 30
+  min_cluster_size: 3
+
+  categories:
+    - "material_performance"
+    - "common_design_issues"
+    - "pricing_patterns"
+    - "print_failure_root_causes"
+    - "client_faq"
+    - "post_processing_tips"
+    - "competitor_intelligence"
+
+  max_articles_per_run: 10
+  min_evidence_count: 3

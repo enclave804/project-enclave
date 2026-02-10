@@ -53,6 +53,15 @@ targeting:
       company_size: [50, 500]
       approach: efficiency_pitch
 
+    - id: project_manager
+      title_patterns:
+        - "Project Manager"
+        - "Project Director"
+        - "Development Manager"
+        - "VP Development"
+      company_size: [20, 500]
+      approach: project_trigger
+
 outreach:
   email:
     daily_limit: 30
@@ -66,6 +75,9 @@ outreach:
       - name: efficiency_pitch
         steps: 2
         delay_days: [0, 5]
+      - name: project_trigger
+        steps: 3
+        delay_days: [0, 4, 8]
 
   compliance:
     jurisdictions:
@@ -109,6 +121,9 @@ rag:
     - company_intel
     - outreach_result
     - winning_pattern
+    - material_knowledge
+    - objection_handling
+  seed_data_path: "knowledge/seed_data/"
   learning_threshold: 100
 
 agent:

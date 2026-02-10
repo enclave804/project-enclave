@@ -1,0 +1,25 @@
+agent_id: print_manager_v1
+agent_type: print_manager
+name: "Print Manager Agent"
+description: "Manages print farm queue, assigns printers, and monitors active jobs"
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "*/30 * * * *"
+
+model_routing:
+  primary: claude-haiku-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  max_concurrent_prints: 4
+  queue_check_interval_minutes: 30
+  max_queue_depth: 50

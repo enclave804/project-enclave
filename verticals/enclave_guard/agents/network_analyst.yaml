@@ -1,0 +1,77 @@
+# Network Analyst Agent — Enclave Guard vertical
+#
+# The Cartographer: maps the client's external network topology after
+# vulnerability scanning completes. Discovers subdomains, analyzes DNS
+# configuration, identifies shadow IT, and assesses network segmentation.
+#
+# Pipeline: dns_enumeration → subdomain_discovery → topology_mapping →
+#           shadow_it_detection → risk_assessment → save_findings → END
+#
+# Triggered after vuln_scanner completes to build a full picture of
+# the client's attack surface before deeper analysis agents run.
+#
+# Data sources (public data only):
+#   - DNS records (A, AAAA, MX, TXT, CNAME, NS)
+#   - Certificate Transparency logs
+#   - WHOIS data
+#   - SPF/DMARC/DKIM records
+
+agent_id: network_analyst_v1
+agent_type: network_analyst
+name: "Network Analyst Agent"
+description: >
+  Maps external network topology, discovers subdomains, analyzes DNS
+  configuration, and identifies shadow IT assets. Builds a complete
+  picture of the client's public-facing attack surface.
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.3  # Low: precise topology analysis
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+  - enumerate_dns_records
+  - find_subdomains
+  - check_dnssec
+  - check_spf_dmarc
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event: vuln_scan_complete
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Subdomain discovery
+  max_subdomains: 100
+  dns_timeout_seconds: 30
+
+  # CT log search depth
+  ct_log_max_entries: 500
+
+  # Shadow IT detection keywords
+  shadow_it_indicators:
+    - "dev."
+    - "staging."
+    - "test."
+    - "old."
+    - "legacy."
+    - "temp."

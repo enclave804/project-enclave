@@ -1,0 +1,59 @@
+# PrintBiz Finance Agent
+# Invoice management and accounts receivable for print jobs.
+
+agent_id: print_finance_v1
+agent_type: finance
+name: "PrintBiz Finance Agent"
+description: >
+  Generates invoices for 3D printing projects, tracks payments,
+  sends overdue reminders, and reports on revenue. Handles
+  milestone-based billing for large projects and upfront payment
+  for standard orders.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.3
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual
+  cron: "0 8 * * 1-5"
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  default_currency: usd
+  default_due_days: 15
+  default_description: "3D Printing Services — Architectural Models"
+  max_invoice_amount: 1000000
+  overdue_threshold_days: 5
+  reminder_schedule:
+    polite_days: 3
+    firm_days: 7
+    final_days: 14
+  report_currency: usd
+  payment_terms:
+    standard: "Net 15 — payment due within 15 days of delivery"
+    large_project: "50% upfront, 50% on delivery"
+    enterprise: "Net 30 — for firms with 3+ previous orders"
+  cost_tracking:
+    sources:
+      - material_costs
+      - print_time_costs
+      - post_processing_labor
+      - shipping_costs

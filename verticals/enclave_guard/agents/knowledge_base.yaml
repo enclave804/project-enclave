@@ -1,0 +1,49 @@
+# Knowledge Base Agent — Enclave Guard vertical
+#
+# The Librarian: scans recent interactions, outreach results,
+# and deal outcomes to surface emerging patterns and cluster
+# them into reusable knowledge articles.
+#
+# Pipeline: scan_recent_data → cluster_patterns → draft_articles →
+#           human_review → publish_to_rag → END
+#
+# Runs weekly (Friday 6 AM) so the team enters Monday with
+# fresh intelligence on what's working and what's not.
+
+agent_id: knowledge_base_v1
+agent_type: knowledge_base
+name: "Knowledge Base Agent"
+description: "Scans recent activity to surface patterns and build reusable knowledge articles for the team."
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 6 * * 5"  # Every Friday at 6 AM
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "Enclave Guard"
+  scan_period_days: 30
+  min_cluster_size: 3
+
+  categories:
+    - "objection_handling"
+    - "pricing_patterns"
+    - "competitor_intelligence"
+    - "technical_faq"
+    - "onboarding_lessons"
+    - "security_trends"
+    - "compliance_updates"
+
+  max_articles_per_run: 10
+  min_evidence_count: 3

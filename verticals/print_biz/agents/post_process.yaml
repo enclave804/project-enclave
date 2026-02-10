@@ -1,0 +1,26 @@
+agent_id: post_process_v1
+agent_type: post_process
+name: "Post-Processing Agent"
+description: "Recommends finishing steps and generates production work orders"
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - print_completed
+    - post_process_requested
+
+model_routing:
+  primary: claude-haiku-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  default_finish: "standard"
+  finish_levels: ["raw", "basic", "standard", "premium", "exhibition"]

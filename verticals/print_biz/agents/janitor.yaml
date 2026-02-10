@@ -1,0 +1,38 @@
+# PrintBiz Maintenance / Janitor Agent
+# System health, data cleanup, and duplicate detection.
+
+agent_id: print_janitor_v1
+agent_type: maintenance
+name: "PrintBiz Maintenance Agent"
+description: >
+  Runs weekly data hygiene for the PrintBiz vertical. Deduplicates
+  contacts, archives stale leads, cleans up orphaned records, and
+  monitors system health metrics. Runs unattended on Sundays.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.2
+  max_tokens: 2048
+
+tools: []
+
+browser_enabled: false
+
+human_gates:
+  enabled: false
+
+schedule:
+  trigger: scheduled
+  cron: "0 3 * * 0"
+
+max_consecutive_errors: 3
+rag_write_confidence_threshold: 0.5
+
+params:
+  similarity_threshold: 0.95
+  max_duplicate_groups: 50
+  max_merges_per_run: 10
+  max_age_days: 60
+  min_confidence_for_retention: 0.3

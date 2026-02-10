@@ -1,0 +1,93 @@
+# Remediation Guide Agent — Enclave Guard vertical
+#
+# The Fixer: transforms assessment findings into actionable, prioritized
+# remediation plans. Generates step-by-step fix instructions, assigns
+# effort estimates, and tracks verification status.
+#
+# Pipeline: load_findings → prioritize_by_risk →
+#           generate_fix_instructions → estimate_effort →
+#           build_timeline → create_verification_checks →
+#           compile_remediation_plan → save_plan → END
+#
+# Prioritization factors:
+#   - CVSS severity score (weight: 0.4)
+#   - Exploitability (weight: 0.3)
+#   - Business impact (weight: 0.2)
+#   - Fix complexity (weight: 0.1)
+#
+# Effort estimation categories:
+#   Quick Win    → < 1 hour, no change window needed
+#   Short        → 1-4 hours, minimal risk
+#   Medium       → 1-3 days, change window recommended
+#   Long         → 1-2 weeks, planned maintenance required
+#   Project      → > 2 weeks, dedicated project needed
+#
+# Verification:
+#   Each remediation task includes a verification check that can
+#   be re-run to confirm the fix was applied successfully.
+
+agent_id: remediation_guide_v1
+agent_type: remediation_guide
+name: "Remediation Guide Agent"
+description: >
+  Transforms assessment findings into prioritized, actionable remediation
+  plans with step-by-step fix instructions, effort estimates, timelines,
+  and verification checks.
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.4  # Moderate: clear instructions with some adaptation
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event: report_delivered
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Task limits
+  max_tasks_per_run: 20
+  verification_timeout_days: 14
+
+  # Priority weights
+  priority_weights:
+    cvss_severity: 0.4
+    exploitability: 0.3
+    business_impact: 0.2
+    fix_complexity: 0.1
+
+  # Effort categories (hours)
+  effort_categories:
+    quick_win: 1
+    short: 4
+    medium: 24
+    long: 80
+    project: 160
+
+  # SLA targets (days to remediate by severity)
+  remediation_sla:
+    critical: 7
+    high: 14
+    medium: 30
+    low: 90

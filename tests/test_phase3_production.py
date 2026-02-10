@@ -1147,6 +1147,7 @@ class TestMultiTenancyIsolation:
         assert len(pb_configs) >= 1
 
     def test_agent_ids_are_unique_across_verticals(self):
+        """Vertical-specific agents have unique IDs; universal agents may share IDs."""
         from core.agents.registry import AgentRegistry
 
         eg_reg = AgentRegistry("enclave_guard")
@@ -1157,8 +1158,28 @@ class TestMultiTenancyIsolation:
 
         eg_ids = {c.agent_id for c in eg_configs}
         pb_ids = {c.agent_id for c in pb_configs}
-        assert eg_ids.isdisjoint(pb_ids), (
-            f"Agent IDs overlap: {eg_ids & pb_ids}"
+
+        # Universal business agents intentionally share IDs across verticals
+        universal_agent_ids = {
+            # Phase 20
+            "contract_manager_v1",
+            "support_v1",
+            "competitive_intel_v1",
+            "reporting_v1",
+            # Phase 21
+            "onboarding_v1",
+            "invoice_v1",
+            "knowledge_base_v1",
+            "feedback_v1",
+            "referral_v1",
+            "win_loss_v1",
+            "data_enrichment_v1",
+            "compliance_v1",
+        }
+        overlap = eg_ids & pb_ids
+        non_universal_overlap = overlap - universal_agent_ids
+        assert not non_universal_overlap, (
+            f"Non-universal agent IDs overlap: {non_universal_overlap}"
         )
 
     def test_different_icp_per_vertical(self):

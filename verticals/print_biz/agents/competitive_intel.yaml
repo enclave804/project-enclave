@@ -1,0 +1,26 @@
+agent_id: competitive_intel_v1
+agent_type: competitive_intel
+name: "Competitive Intelligence Agent"
+description: "Monitors 3D printing competitors and generates market intelligence"
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 8 * * 1"
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  competitors: []
+  intel_types: ["pricing", "feature", "review", "news", "technology"]
+  alert_severity_threshold: "medium"
+  focus_areas: ["architecture_printing", "large_format", "material_innovation"]

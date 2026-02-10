@@ -1,0 +1,61 @@
+# PrintBiz Appointment Setter Agent
+# Books design consultation calls with architecture firms.
+
+agent_id: print_appointment_v1
+agent_type: appointment_setter
+name: "PrintBiz Appointment Setter"
+description: >
+  Classifies inbound replies from architects and designers, handles
+  objections about 3D printing services, and books design consultation
+  calls. Offers free sample prints as conversation starters.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.4
+  max_tokens: 4096
+
+tools:
+  - check_calendar_availability
+  - get_available_slots
+  - book_meeting_slot
+  - get_booking_link
+  - search_knowledge
+  - send_email
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event_source: email_reply
+
+system_prompt_path: verticals/print_biz/prompts/agent_prompts/appointment_system.md
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  default_meeting_duration_minutes: 30
+  max_proposed_times: 3
+  days_ahead_for_slots: 5
+  max_follow_ups: 3
+  follow_up_delay_days: 3
+  ooo_buffer_days: 1
+  classification_model: claude-haiku-4-5-20250514
+  min_classification_confidence: 0.7
+  tone: "Friendly, creative, solution-oriented"
+  company_name: "PrintBiz"
+  meeting_type: "Design Consultation"
+  value_proposition: "See your CAD designs come to life — free sample 3D print included"
+  objection_playbook:
+    too_expensive: "Our architectural models start at $150. We offer a free sample print of your design so you can evaluate quality before committing."
+    already_have_printer: "Many firms with in-house FDM printers use us for high-detail SLA/SLS jobs. We complement your setup for client-facing presentation models."
+    not_a_priority: "Understood. Many of our clients started with a single project test — a competition model or client presentation. Happy to be here when the timing is right."
+    send_more_info: "Absolutely! I'll send over our portfolio with examples from architecture firms like yours, plus our material guide and pricing."
+    turnaround_concerns: "We guarantee 48-hour turnaround for standard models. Rush service available for competition deadlines."

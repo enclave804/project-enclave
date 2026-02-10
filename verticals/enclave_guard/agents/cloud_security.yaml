@@ -1,0 +1,99 @@
+# Cloud Security Agent — Enclave Guard vertical
+#
+# The Cloud Watcher: audits cloud infrastructure configurations across
+# AWS, GCP, and Azure. Checks for misconfigurations, overly permissive
+# IAM policies, unencrypted resources, and logging gaps.
+#
+# Pipeline: identify_providers → enumerate_services →
+#           check_iam_policies → check_encryption →
+#           check_logging → check_network_exposure →
+#           benchmark_cis → save_findings → END
+#
+# Checks by provider:
+#   AWS:
+#     - S3 bucket policies and ACLs
+#     - IAM policy analysis
+#     - CloudTrail / GuardDuty status
+#     - Security group rules
+#     - KMS encryption coverage
+#
+#   GCP:
+#     - IAM bindings and service accounts
+#     - Cloud Audit Logs configuration
+#     - VPC firewall rules
+#     - Cloud KMS usage
+#
+#   Azure:
+#     - Azure AD conditional access
+#     - NSG rules
+#     - Key Vault configuration
+#     - Activity log settings
+#
+# Benchmarks: CIS Benchmarks per provider
+
+agent_id: cloud_security_v1
+agent_type: cloud_security
+name: "Cloud Security Agent"
+description: >
+  Audits cloud infrastructure configurations across AWS, GCP, and Azure.
+  Checks IAM policies, encryption, logging, network exposure, and
+  benchmarks against CIS standards.
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.3  # Low: precise configuration analysis
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event: cloud_access_granted
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Supported cloud providers
+  supported_providers:
+    - aws
+    - gcp
+    - azure
+
+  # Check categories
+  check_encryption: true
+  check_logging: true
+  check_network_exposure: true
+  check_iam_policies: true
+
+  # CIS Benchmark versions
+  cis_benchmark_versions:
+    aws: "3.0"
+    gcp: "2.0"
+    azure: "2.1"
+
+  # Severity mapping for misconfigurations
+  misconfiguration_severity:
+    public_s3_bucket: critical
+    no_mfa_root: critical
+    no_cloudtrail: high
+    overly_permissive_sg: high
+    no_encryption_at_rest: medium
+    missing_tags: low

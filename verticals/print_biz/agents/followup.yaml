@@ -1,0 +1,53 @@
+# PrintBiz Follow-Up Agent
+# Multi-touch follow-up sequences for architecture firm prospects.
+
+agent_id: print_followup_v1
+agent_type: followup
+name: "PrintBiz Follow-Up Agent"
+description: >
+  Manages multi-touch follow-up email sequences for architecture firm
+  leads. Personalizes messages based on project type (residential,
+  commercial, competition), design style, and previous interactions.
+  Detects replies and pauses sequences automatically.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.6
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: scheduled
+  cron: "0 */4 * * *"
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  max_steps: 4
+  interval_days: 3
+  min_confidence: 0.6
+  tone: "Friendly, visual, project-focused"
+  default_subjects:
+    step_1: "Quick follow-up on your 3D printing project"
+    step_2: "Thought you'd like to see this — {company_name} style model"
+    step_3: "Last chance for your free sample print"
+    step_4: "One more thing before I go..."
+  hooks:
+    - "portfolio showcase with similar projects"
+    - "free sample print offer"
+    - "48-hour turnaround guarantee"
+    - "case study from similar architecture firm"

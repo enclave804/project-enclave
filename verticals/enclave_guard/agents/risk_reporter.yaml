@@ -1,0 +1,93 @@
+# Risk Reporter Agent — Enclave Guard vertical
+#
+# The Storyteller: synthesizes findings from all assessment agents into
+# a comprehensive, executive-ready risk report. Translates technical
+# vulnerabilities into business impact language with dollar estimates.
+#
+# Pipeline: gather_all_findings → prioritize_risks → calculate_impact →
+#           build_risk_matrix → write_executive_summary →
+#           write_technical_details → compile_report → save_report → END
+#
+# Report sections:
+#   1. Executive Summary (non-technical, board-ready)
+#   2. Risk Matrix (likelihood x impact grid)
+#   3. Critical Findings (top 5 with remediation costs)
+#   4. Compliance Status (framework gap summary)
+#   5. Technical Deep-Dive (per-finding detail)
+#   6. Remediation Roadmap (prioritized action items)
+#   7. Cost-Benefit Analysis (fix cost vs breach cost)
+#
+# Cost model references:
+#   - Ponemon Institute 2024 Cost of a Data Breach
+#   - Industry-specific breach cost multipliers
+
+agent_id: risk_reporter_v1
+agent_type: risk_reporter
+name: "Risk Reporter Agent"
+description: >
+  Synthesizes all assessment findings into executive-ready risk reports.
+  Translates technical vulnerabilities into business impact with dollar
+  estimates, risk matrices, and prioritized remediation roadmaps.
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.5  # Balanced: creative report writing with factual accuracy
+  max_tokens: 8192  # Large: comprehensive reports
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event: all_assessments_complete
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Report format
+  report_format: markdown
+  include_executive_summary: true
+  include_risk_matrix: true
+  include_cost_analysis: true
+
+  # Cost model reference
+  cost_model: ponemon_2024
+
+  # Risk matrix dimensions
+  risk_matrix:
+    likelihood_levels:
+      - "Very Low"
+      - "Low"
+      - "Medium"
+      - "High"
+      - "Very High"
+    impact_levels:
+      - "Negligible"
+      - "Minor"
+      - "Moderate"
+      - "Major"
+      - "Severe"
+
+  # Breach cost estimates (USD) by industry
+  breach_cost_per_record:
+    healthcare: 10.93
+    financial: 5.90
+    technology: 4.97
+    default: 4.45

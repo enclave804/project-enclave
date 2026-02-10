@@ -1,0 +1,27 @@
+agent_id: qc_inspector_v1
+agent_type: qc_inspector
+name: "QC Inspector Agent"
+description: "Performs quality control inspection comparing prints against specifications"
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - post_processing_completed
+    - qc_requested
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  min_pass_score: 75
+  dimensional_tolerance_percent: 2.0
+  surface_quality_threshold: 70

@@ -1,0 +1,25 @@
+agent_id: reporting_v1
+agent_type: reporting
+name: "Reporting Agent"
+description: "Generates periodic business analytics and performance reports"
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 8 * * 1"
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  default_report_type: "weekly"
+  include_charts: true
+  distribution_list: []

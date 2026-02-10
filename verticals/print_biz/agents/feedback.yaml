@@ -1,0 +1,52 @@
+# Feedback Agent — PrintBiz vertical
+#
+# The Voice of the Customer: dispatches NPS surveys at key
+# touchpoints in the 3D printing lifecycle, collects responses,
+# and routes critical feedback for immediate action.
+#
+# Pipeline: identify_touchpoints → send_surveys → collect_responses →
+#           analyze_sentiment → route_critical → human_review → report → END
+#
+# Includes a post-delivery touchpoint unique to physical product
+# businesses — captures quality satisfaction after the client
+# has received and inspected the printed parts.
+
+agent_id: feedback_v1
+agent_type: feedback
+name: "PrintBiz Feedback Agent"
+description: "Dispatches NPS surveys at print lifecycle touchpoints, analyzes sentiment, and routes critical feedback."
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 10 1 * *"  # 1st of every month at 10 AM
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  default_survey_type: "nps"
+  critical_nps_threshold: 6
+
+  touchpoints:
+    - "post_onboarding"
+    - "post_design_review"
+    - "post_prototype"
+    - "post_delivery"
+    - "quarterly_review"
+    - "contract_renewal"
+
+  escalation_rules:
+    critical_to: "cs_agent"
+    alert_channel: "leadership"
+
+  survey_expiry_days: 14

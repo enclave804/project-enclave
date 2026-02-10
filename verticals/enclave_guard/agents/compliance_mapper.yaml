@@ -1,0 +1,83 @@
+# Compliance Mapper Agent — Enclave Guard vertical
+#
+# The Auditor: maps client security posture against regulatory and
+# industry compliance frameworks. Cross-references findings from other
+# agents against control requirements to identify gaps.
+#
+# Pipeline: load_framework → ingest_findings → map_to_controls →
+#           gap_analysis → score_compliance → generate_mapping →
+#           save_findings → END
+#
+# Supported frameworks:
+#   SOC 2 Type II  — Trust Services Criteria (2017)
+#   HIPAA          — Security Rule (2013)
+#   PCI DSS        — v4.0
+#   ISO 27001      — 2022 revision
+#   NIST CSF       — 2.0
+#   CIS Controls   — v8
+#
+# Scoring model:
+#   Compliant      → Control fully satisfied
+#   Partial        → Control partially met, remediation needed
+#   Non-Compliant  → Control not met, gap identified
+#   Not Assessed   → Insufficient data to evaluate
+
+agent_id: compliance_mapper_v1
+agent_type: compliance_mapper
+name: "Compliance Mapper Agent"
+description: >
+  Maps security findings against regulatory compliance frameworks (SOC 2,
+  HIPAA, PCI DSS, ISO 27001). Identifies control gaps, calculates
+  compliance scores, and generates audit-ready mapping reports.
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.4  # Slightly creative for gap interpretation
+  max_tokens: 8192  # Large: detailed compliance mapping
+
+tools:
+  - search_knowledge
+  - save_insight
+  - get_framework_requirements
+  - map_finding_to_controls
+  - get_compliance_score
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event: assessment_started
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Default frameworks to assess
+  default_frameworks:
+    - SOC2
+    - HIPAA
+
+  # Framework versions
+  framework_version_soc2: "2017"
+  framework_version_hipaa: "2013"
+  framework_version_pci: "4.0"
+  framework_version_iso27001: "2022"
+
+  # Scoring thresholds
+  compliance_thresholds:
+    passing: 0.80
+    warning: 0.60
+    failing: 0.40

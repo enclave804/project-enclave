@@ -1,0 +1,49 @@
+# Data Enrichment Agent — Enclave Guard vertical
+#
+# The Data Steward: validates, enriches, and deduplicates CRM
+# records on a weekly cadence. Catches stale emails, outdated
+# company info, and near-duplicate contacts before they rot.
+#
+# Pipeline: scan_tables → validate_emails → check_freshness →
+#           find_duplicates → propose_merges → human_review → apply → END
+#
+# Runs Sunday 3 AM to minimize interference with weekday ops.
+
+agent_id: data_enrichment_v1
+agent_type: data_enrichment
+name: "Data Enrichment Agent"
+description: "Validates emails, detects stale records, and deduplicates CRM data on a weekly cadence."
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 3 * * 0"  # Every Sunday at 3 AM
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "Enclave Guard"
+
+  scan_tables:
+    - "contacts"
+    - "companies"
+
+  stale_threshold_days: 180
+  email_validation: true
+  dedup_threshold: 0.85
+
+  enrichment_sources:
+    - "apollo"
+    - "clearbit"
+
+  max_records_per_run: 500
+  dry_run: false

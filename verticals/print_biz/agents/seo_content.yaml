@@ -1,0 +1,58 @@
+# PrintBiz SEO Content Agent
+# Generates blog posts, case studies, and landing pages for 3D printing services.
+
+agent_id: print_seo_v1
+agent_type: seo_content
+name: "PrintBiz SEO Content Agent"
+description: >
+  Creates SEO-optimized content targeting architects, designers, and
+  real estate developers searching for 3D printing and rapid prototyping
+  services. Focuses on design showcase, project case studies, and
+  technical guides for CAD-to-print workflows.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.7
+  max_tokens: 8192
+
+tools:
+  - rag_search
+
+browser_enabled: true
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual
+
+system_prompt_path: verticals/print_biz/prompts/agent_prompts/seo_system.md
+
+max_consecutive_errors: 3
+rag_write_confidence_threshold: 0.7
+
+params:
+  target_word_count: 1500
+  tone: "Creative, Visual, Technically Accessible"
+  content_type: blog_post
+  company_name: "PrintBiz"
+  niche: "3D Printing for Architecture & Design"
+  target_topics:
+    - "3D printed architectural models"
+    - "rapid prototyping for architects"
+    - "CAD to 3D print workflow"
+    - "3D printing materials for architectural scale models"
+    - "design visualization with 3D printing"
+    - "SLA vs FDM for architectural models"
+    - "3D printing for real estate presentations"
+    - "sustainable model making with 3D printing"
+  target_keywords:
+    - "3d printing architecture"
+    - "architectural model 3d print"
+    - "rapid prototyping design"
+    - "CAD to physical model"
+    - "3d printed scale model"

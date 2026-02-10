@@ -1,0 +1,53 @@
+# PrintBiz Sales Pipeline Agent
+# Tracks deals from inquiry through production to delivery.
+
+agent_id: print_pipeline_v1
+agent_type: sales_pipeline
+name: "PrintBiz Sales Pipeline"
+description: >
+  Tracks 3D printing deals through stages: prospect → qualified →
+  quote_sent → production → delivery → closed_won/lost.
+  Identifies stalled quotes, at-risk projects, and forecasts revenue.
+  Shorter sales cycle (21 days) than B2B consulting.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.4
+  max_tokens: 8192
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: scheduled
+  cron: "0 7 * * *"
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  stale_days: 5
+  at_risk_days: 10
+  forecast_months: 2
+  min_deal_value_cents: 0
+  stages:
+    - prospect
+    - qualified
+    - quote_sent
+    - production
+    - delivery
+    - closed_won
+    - closed_lost
+  avg_deal_value_cents: 150000
+  target_monthly_deals: 20

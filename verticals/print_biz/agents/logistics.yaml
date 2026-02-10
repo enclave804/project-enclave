@@ -1,0 +1,27 @@
+agent_id: logistics_v1
+agent_type: logistics
+name: "Logistics Agent"
+description: "Plans packaging, selects carriers, and manages shipment tracking"
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - qc_passed
+    - shipping_requested
+
+model_routing:
+  primary: claude-haiku-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  default_carrier: "usps"
+  fragile_packaging_required: true
+  insurance_threshold_cents: 10000

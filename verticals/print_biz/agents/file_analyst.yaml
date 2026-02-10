@@ -1,0 +1,27 @@
+agent_id: file_analyst_v1
+agent_type: file_analyst
+name: "File Analyst Agent"
+description: "Validates 3D files, checks geometry integrity, reports printability"
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - print_job_submitted
+    - file_resubmitted
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  max_file_size_mb: 500
+  supported_formats: ["STL", "OBJ", "STEP", "3MF"]
+  min_printability_score: 50

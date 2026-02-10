@@ -1,0 +1,51 @@
+# PrintBiz Voice Agent
+# SMS delivery notifications and call-based appointment reminders.
+
+agent_id: print_voice_v1
+agent_type: voice
+name: "PrintBiz Voice & SMS Agent"
+description: >
+  Handles SMS notifications for order status updates (production started,
+  shipped, delivered) and appointment reminders for design consultations.
+  Can make outbound calls for high-value project follow-ups.
+enabled: false
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.4
+  max_tokens: 2048
+
+tools:
+  - send_sms
+  - make_call
+  - get_call_log
+  - get_sms_log
+  - search_knowledge
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  default_from_number: ""
+  sms_templates:
+    order_confirmed: "Hi {name}! Your PrintBiz order #{order_id} is confirmed. We'll start printing shortly. Track status: {tracking_url}"
+    production_started: "Great news {name}! Your 3D print is now in production. Estimated completion: {est_date}."
+    shipped: "Your PrintBiz order #{order_id} has shipped! Tracking: {tracking_number}. Expected delivery: {delivery_date}."
+    delivered: "Your PrintBiz order has been delivered! We'd love to hear how it turned out. Reply with any feedback."
+    appointment_reminder: "Reminder: Your design consultation with PrintBiz is tomorrow at {time}. Meeting link: {meeting_url}"
+  call_scripts:
+    high_value_followup: "Hi {name}, this is {agent_name} from PrintBiz. I wanted to follow up on the project we discussed..."
+  max_sms_per_day: 50
+  max_calls_per_day: 10

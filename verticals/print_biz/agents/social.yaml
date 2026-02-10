@@ -1,0 +1,66 @@
+# PrintBiz Social Media Agent
+# Showcases finished prints, behind-the-scenes, and client projects.
+
+agent_id: print_social_v1
+agent_type: social
+name: "PrintBiz Social Media Agent"
+description: >
+  Manages social media presence for PrintBiz. Posts finished print
+  showcases, before/after comparisons (CAD → physical model),
+  time-lapse printing videos, material guides, and client project
+  features. Targets architects and designers on Instagram and LinkedIn.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.7
+  max_tokens: 4096
+
+tools:
+  - post_social_update
+  - get_social_mentions
+  - reply_to_post
+  - check_trending_topics
+  - search_knowledge
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual
+  cron: "0 10 * * 1-5"
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  niche: "3D Printing for Architecture & Design"
+  default_platform: instagram
+  posts_per_run: 3
+  max_posts_per_day: 5
+  tone: "Visual, inspiring, technically credible"
+  brand_voice: "Creative maker meets precision engineering"
+  emoji_usage: moderate
+  always_include_hashtags:
+    - "#3Dprinting"
+    - "#architecture"
+  max_hashtags_per_post: 8
+  reply_to_mentions: true
+  reply_tone: "Enthusiastic, helpful, design-savvy"
+  content_pillars:
+    - "Finished print showcases (hero shots)"
+    - "CAD to physical — before/after reveals"
+    - "Material deep dives (PLA vs SLA vs SLS)"
+    - "Client project features (with permission)"
+    - "Behind the scenes — print farm in action"
+    - "Design tips for 3D printability"
+    - "Architecture industry news and trends"
+  platforms:
+    - instagram
+    - linkedin

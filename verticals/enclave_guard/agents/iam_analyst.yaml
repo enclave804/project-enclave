@@ -1,0 +1,91 @@
+# IAM Analyst Agent — Enclave Guard vertical
+#
+# The Gatekeeper: evaluates identity and access management practices
+# through client questionnaires and configuration review. Assesses
+# authentication strength, authorization models, and privilege management.
+#
+# Pipeline: parse_questionnaire → assess_authentication →
+#           assess_authorization → check_privilege_management →
+#           evaluate_lifecycle → score_iam_maturity →
+#           save_findings → END
+#
+# Assessment areas:
+#   Authentication:
+#     - MFA adoption rate and enforcement
+#     - Password policy strength
+#     - SSO/federation configuration
+#     - Passwordless adoption
+#
+#   Authorization:
+#     - RBAC/ABAC model maturity
+#     - Least privilege adherence
+#     - Separation of duties
+#
+#   Lifecycle:
+#     - Provisioning automation
+#     - Deprovisioning timeliness
+#     - Access review cadence
+#     - Orphaned account detection
+
+agent_id: iam_analyst_v1
+agent_type: iam_analyst
+name: "IAM Analyst Agent"
+description: >
+  Evaluates identity and access management practices including MFA
+  adoption, password policies, RBAC maturity, privilege management,
+  and user lifecycle governance through questionnaire analysis.
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.3  # Low: precise policy evaluation
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event: questionnaire_received
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Authentication requirements
+  mfa_required_threshold: 0.9  # 90% adoption = passing
+  password_min_length: 12
+  password_require_complexity: true
+  max_password_age_days: 90
+
+  # Access review expectations
+  access_review_max_interval_days: 90
+  deprovisioning_max_hours: 24
+
+  # IAM maturity model levels
+  maturity_levels:
+    - name: "Initial"
+      score_range: [0, 20]
+    - name: "Developing"
+      score_range: [21, 40]
+    - name: "Defined"
+      score_range: [41, 60]
+    - name: "Managed"
+      score_range: [61, 80]
+    - name: "Optimized"
+      score_range: [81, 100]

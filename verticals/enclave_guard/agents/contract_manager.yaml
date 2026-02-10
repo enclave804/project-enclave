@@ -1,0 +1,29 @@
+agent_id: contract_manager_v1
+agent_type: contract_manager
+name: "Contract Manager Agent"
+description: "Generates service agreements, tracks signatures, manages renewals"
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - proposal_accepted
+    - contract_renewal_due
+    - contract_requested
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.75
+
+params:
+  renewal_window_days: 30
+  default_contract_type: "service_agreement"
+  auto_renewal_check: true
+  contract_templates: ["service_agreement", "msa", "nda", "sow"]

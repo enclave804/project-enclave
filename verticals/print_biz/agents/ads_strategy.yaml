@@ -1,0 +1,67 @@
+# PrintBiz Ads Strategy Agent
+# Manages paid campaigns targeting architects and designers.
+
+agent_id: print_ads_v1
+agent_type: ads_strategy
+name: "PrintBiz Ads Strategist"
+description: >
+  Plans and manages paid advertising campaigns for 3D printing
+  services. Targets architecture firms on LinkedIn (B2B) and
+  Instagram (visual). Creates ad copy, manages budgets, and
+  optimizes for lead generation and quote requests.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.5
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  niche: "3D Printing Services for Architecture"
+  landing_url: "https://printbiz3d.com/architecture"
+  max_daily_budget: 100.0
+  max_total_budget: 3000.0
+  variants_per_group: 3
+  default_platform: linkedin
+  default_objective: lead_generation
+  default_budget_daily: 30.0
+  default_target_cpa: 15.0
+  default_seed_keywords:
+    - "3d printing architectural models"
+    - "rapid prototyping architecture"
+    - "scale model 3d print service"
+    - "architectural model maker"
+    - "CAD to 3d print"
+    - "3d print design visualization"
+  target_audiences:
+    - name: "Architecture Firm Leaders"
+      titles: ["Principal Architect", "Design Director", "Studio Manager"]
+      industries: ["Architecture", "Interior Design"]
+    - name: "Real Estate Developers"
+      titles: ["VP Development", "Project Manager", "Director of Operations"]
+      industries: ["Real Estate Development", "Urban Planning"]
+  ad_compliance:
+    required_disclaimer: ""
+    prohibited_claims:
+      - "guaranteed results"
+      - "cheapest in market"
+    tone_guidelines: "Visual, professional, design-focused"

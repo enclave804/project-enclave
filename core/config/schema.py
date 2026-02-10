@@ -49,6 +49,8 @@ class ChunkType(str, Enum):
     VULNERABILITY_KNOWLEDGE = "vulnerability_knowledge"
     INDUSTRY_INSIGHT = "industry_insight"
     OBJECTION_HANDLING = "objection_handling"
+    MATERIAL_KNOWLEDGE = "material_knowledge"
+    DOMAIN_EXPERTISE = "domain_expertise"
 
 
 # ---------------------------------------------------------------------------

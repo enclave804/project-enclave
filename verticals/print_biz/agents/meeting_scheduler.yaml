@@ -1,0 +1,55 @@
+# PrintBiz Meeting Scheduler Agent
+# Schedules design consultations and project review calls.
+
+agent_id: print_meeting_v1
+agent_type: meeting_scheduler
+name: "PrintBiz Meeting Scheduler"
+description: >
+  Schedules design consultations, project kickoffs, and delivery review
+  calls with architecture and design clients. Manages calendar slots,
+  sends professional invites, and handles rescheduling.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.5
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  cron: "0 9 * * 1-5"
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  default_duration: 30
+  working_hours_start: 9
+  working_hours_end: 17
+  timezone: "America/Los_Angeles"
+  meeting_types:
+    design_consultation:
+      duration: 30
+      description: "Review your CAD files and discuss printing options"
+    project_kickoff:
+      duration: 45
+      description: "Kick off a new 3D printing project with specs and timeline"
+    delivery_review:
+      duration: 15
+      description: "Quick review of delivered models and feedback"
+    portfolio_demo:
+      duration: 20
+      description: "Walk through our portfolio and capabilities"

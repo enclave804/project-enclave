@@ -1,0 +1,27 @@
+agent_id: material_advisor_v1
+agent_type: material_advisor
+name: "Material Advisor Agent"
+description: "Recommends optimal print material and technology based on requirements"
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - file_analysis_completed
+    - material_advice_requested
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-sonnet-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.75
+
+params:
+  default_budget_cents: 500000
+  supported_technologies: ["FDM", "SLA", "SLS", "MJF", "Binder_Jetting"]
+  default_material: "PLA"

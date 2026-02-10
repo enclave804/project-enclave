@@ -1,0 +1,60 @@
+# Onboarding Agent — Enclave Guard vertical
+#
+# The Welcome Wagon: automates client onboarding from contract
+# signature through project kickoff. Creates milestone checklists,
+# sends welcome packets, and ensures no step is missed.
+#
+# Pipeline: detect_contract → create_onboarding_plan → assign_milestones →
+#           send_welcome → schedule_kickoff → human_review → execute → END
+#
+# The Onboarding Agent reads from the shared brain:
+#   - Signed contracts (trigger onboarding flow)
+#   - Client tier data (enterprise vs standard templates)
+#   - Team availability (kickoff scheduling)
+
+agent_id: onboarding_v1
+agent_type: onboarding
+name: "Onboarding Agent"
+description: "Automates client onboarding from contract signature through project kickoff with milestone tracking."
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - contract_signed
+    - client_onboarding_requested
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "Enclave Guard"
+  default_template: "default"
+  kickoff_delay_days: 3
+
+  milestone_templates:
+    default:
+      - "Send welcome packet with team introductions"
+      - "Schedule kickoff call"
+      - "Provision portal access and credentials"
+      - "Confirm project scope and timeline"
+      - "Set up communication channel"
+      - "Deliver initial security assessment questionnaire"
+    enterprise:
+      - "Executive sponsor introduction"
+      - "Send welcome packet with dedicated team bios"
+      - "Schedule kickoff call with C-level stakeholders"
+      - "Provision enterprise portal with SSO"
+      - "Confirm project scope, timeline, and SLAs"
+      - "Set up dedicated Slack channel"
+      - "Deliver comprehensive security assessment questionnaire"
+      - "Assign dedicated account manager"
+      - "Schedule 30-day executive review"

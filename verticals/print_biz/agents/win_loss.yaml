@@ -1,0 +1,48 @@
+# Win/Loss Analysis Agent — PrintBiz vertical
+#
+# The Strategist: analyzes closed deals (won and lost) to extract
+# patterns in quoting, material preferences, turnaround time
+# expectations, and competitor mentions in the 3D printing space.
+#
+# Pipeline: collect_closed_deals → classify_outcomes → extract_patterns →
+#           generate_report → human_review → publish_to_rag → END
+#
+# Requires minimum 5 deals in the analysis window to produce
+# statistically meaningful insights.
+
+agent_id: win_loss_v1
+agent_type: win_loss
+name: "PrintBiz Win/Loss Analysis Agent"
+description: "Analyzes closed deals to extract quoting, material preference, and turnaround patterns."
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 8 1 * *"  # 1st of every month at 8 AM
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  analysis_period_days: 90
+  min_deals_for_analysis: 5
+
+  focus_areas:
+    - "pricing_sensitivity"
+    - "material_preferences"
+    - "turnaround_time_expectations"
+    - "competitor_displacement"
+    - "design_complexity_impact"
+    - "repeat_order_patterns"
+
+  output_format: "executive_summary"
+  include_recommendations: true

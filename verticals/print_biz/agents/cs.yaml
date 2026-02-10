@@ -1,0 +1,63 @@
+# PrintBiz Customer Success Agent
+# Post-delivery check-ins, satisfaction tracking, and reorder prompts.
+
+agent_id: print_cs_v1
+agent_type: cs
+name: "PrintBiz Customer Success"
+description: >
+  Manages post-delivery client relationships for 3D printing orders.
+  Sends satisfaction surveys, handles quality concerns, prompts for
+  reorders on new projects, and identifies upsell opportunities
+  (e.g., moving from FDM to SLA, adding finishing services).
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.6
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+  - send_email
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: manual
+  cron: "0 9 * * 1"
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  onboarding_checklist:
+    - "Confirm file submission guidelines sent"
+    - "Verify preferred material and finish"
+    - "Set up project communication channel"
+    - "Send welcome kit with material samples"
+    - "Schedule first design consultation"
+    - "Confirm billing and shipping details"
+  risk_thresholds:
+    low: 0.3
+    moderate: 0.5
+    high: 0.7
+    critical: 0.9
+  checkin_schedule:
+    post_delivery: "2 days after delivery"
+    satisfaction_survey: "7 days after delivery"
+    reorder_prompt: "30 days after last order"
+    quarterly_review: "90 days — for repeat clients"
+  default_sender: "hello@printbiz3d.com"
+  escalation_email: "jose@printbiz3d.com"
+  reorder_hooks:
+    - "New project starting? We'd love to print your models again."
+    - "Competition deadline coming up? We guarantee 48-hour rush delivery."
+    - "Upgraded materials available — see what SLA resin can do for your next presentation."

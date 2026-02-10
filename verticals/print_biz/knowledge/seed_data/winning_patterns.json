@@ -1,0 +1,77 @@
+[
+  {
+    "type": "winning_pattern",
+    "pattern_type": "design_showcase",
+    "persona": "design_director",
+    "industry": "Architecture",
+    "description": "Leading with visual portfolio of finished architectural models. Emphasis on SLA resin detail quality and professional finishing. Free sample offer as CTA.",
+    "win_rate": 0.22,
+    "sample_size": 50,
+    "key_elements": [
+      "Portfolio images of finished models",
+      "Before/after CAD-to-physical comparison",
+      "Free sample print offer",
+      "48-hour turnaround mention"
+    ]
+  },
+  {
+    "type": "winning_pattern",
+    "pattern_type": "efficiency_pitch",
+    "persona": "vp_ops",
+    "industry": "Architecture",
+    "description": "ROI-focused pitch comparing 3D printing costs and timeline to traditional model shops. Emphasizes consistency, scalability, and Net 30 terms for larger firms.",
+    "win_rate": 0.15,
+    "sample_size": 40,
+    "key_elements": [
+      "Cost comparison data",
+      "Turnaround time guarantee",
+      "Scalability for multiple models",
+      "Enterprise payment terms"
+    ]
+  },
+  {
+    "type": "winning_pattern",
+    "pattern_type": "design_showcase",
+    "persona": "design_director",
+    "industry": "Interior Design",
+    "description": "Showcasing detailed interior model prints with furniture and fixture details. Emphasis on color printing options and miniature accuracy.",
+    "win_rate": 0.18,
+    "sample_size": 30,
+    "key_elements": [
+      "Full-color sandstone printing capabilities",
+      "Furniture and fixture detail at small scale",
+      "Client presentation use case",
+      "Photography of finished models"
+    ]
+  },
+  {
+    "type": "winning_pattern",
+    "pattern_type": "project_trigger",
+    "persona": "design_director",
+    "industry": "Architecture",
+    "description": "Triggered by detection of an active design competition. Offers to print the competition model with rush turnaround. High urgency = high conversion.",
+    "win_rate": 0.28,
+    "sample_size": 25,
+    "key_elements": [
+      "Reference specific competition name",
+      "Rush turnaround availability",
+      "Competition-winning model examples",
+      "Jury impact of physical models"
+    ]
+  },
+  {
+    "type": "winning_pattern",
+    "pattern_type": "efficiency_pitch",
+    "persona": "vp_ops",
+    "industry": "Real Estate Development",
+    "description": "Pitch to real estate developers focused on stakeholder presentations and investor meetings. Physical models help close funding rounds and zoning approvals.",
+    "win_rate": 0.16,
+    "sample_size": 35,
+    "key_elements": [
+      "Investor meeting impact",
+      "Zoning board presentation use case",
+      "Multiple scale options (site model + detail)",
+      "Branded display bases"
+    ]
+  }
+]

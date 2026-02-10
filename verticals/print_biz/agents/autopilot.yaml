@@ -1,0 +1,57 @@
+# PrintBiz Autopilot Agent
+# Autonomous execution scheduler for all PrintBiz agents.
+
+agent_id: print_autopilot_v1
+agent_type: autopilot
+name: "PrintBiz Autopilot"
+description: >
+  Autonomous scheduler that orchestrates all PrintBiz agents.
+  Analyzes performance metrics, allocates resources between outreach,
+  follow-up, content creation, and order management. Runs daily
+  health checks and optimizes the sales pipeline.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.4
+  max_tokens: 8192
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  auto_approve_threshold: 0.0
+
+schedule:
+  trigger: scheduled
+  cron: "0 6 * * *"
+
+max_consecutive_errors: 3
+rag_write_confidence_threshold: 0.8
+
+params:
+  company_name: "PrintBiz"
+  analysis_period_days: 7
+  min_confidence_threshold: 0.6
+  max_budget_reallocation_pct: 0.20
+  healing_auto_apply: false
+  kpis:
+    target_monthly_leads: 60
+    target_conversion_rate: 0.15
+    target_avg_order_value_cents: 150000
+    target_repeat_rate: 0.30
+    target_delivery_satisfaction: 0.95
+  agent_priority_order:
+    - outreach
+    - followup
+    - appointment_setter
+    - proposal_builder
+    - finance
+    - cs
+    - social
+    - seo_content

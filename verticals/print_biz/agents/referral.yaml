@@ -1,0 +1,46 @@
+# Referral Agent — PrintBiz vertical
+#
+# The Growth Engine: identifies satisfied clients (high NPS +
+# completed print projects) and nurtures referral requests.
+# Offers discount-based incentives suited to repeat manufacturing.
+#
+# Pipeline: identify_promoters → draft_referral_ask → human_review →
+#           send → track_referrals → apply_discount → report → END
+#
+# Referral incentive is a 10% discount on the client's next order,
+# encouraging repeat business alongside new client acquisition.
+
+agent_id: referral_v1
+agent_type: referral
+name: "PrintBiz Referral Agent"
+description: "Identifies promoters, nurtures referral requests, and rewards with order discounts."
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 9 15 * *"  # 15th of every month at 9 AM
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  min_nps_score: 9
+  min_projects_completed: 1
+  default_commission_percent: 10.0
+
+  referral_incentive: "10% discount on next order"
+  max_referral_asks_per_client: 2  # Per quarter
+  cooldown_days: 90
+
+  tracking:
+    attribution_window_days: 180
+    commission_payout_trigger: "first_order_delivered"

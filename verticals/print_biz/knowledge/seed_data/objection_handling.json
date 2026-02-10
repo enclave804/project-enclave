@@ -1,0 +1,67 @@
+[
+  {
+    "type": "objection_handling",
+    "objection": "too_expensive",
+    "response_strategy": "Reframe around value: models start at $150, free sample eliminates risk. Compare to traditional model shop costs ($500-2000+) and in-house time investment. For larger orders, offer volume pricing.",
+    "effectiveness_score": 0.65,
+    "common_personas": ["vp_ops", "design_director"],
+    "key_points": [
+      "Models start at $150 for basic FDM",
+      "Free sample print — zero risk evaluation",
+      "60-80% cheaper than traditional model shops",
+      "Time savings = designer hours freed for billable work"
+    ]
+  },
+  {
+    "type": "objection_handling",
+    "objection": "have_in_house_printer",
+    "response_strategy": "Position as complement, not replacement. In-house FDM is great for quick studies, but SLA/SLS produces client-facing quality. Offer for specific use cases: competition models, client presentations, investor meetings.",
+    "effectiveness_score": 0.55,
+    "common_personas": ["design_director"],
+    "key_points": [
+      "Complement in-house FDM with SLA/SLS for detail work",
+      "Client-facing models need higher quality than study models",
+      "No maintenance, material, or operator costs for occasional high-detail jobs",
+      "Focus on competition and presentation models"
+    ]
+  },
+  {
+    "type": "objection_handling",
+    "objection": "not_a_priority",
+    "response_strategy": "Acknowledge timing. Plant seed for future: most firms start with one project. Offer to stay in touch and share portfolio for when the right project comes up. No pressure.",
+    "effectiveness_score": 0.40,
+    "common_personas": ["design_director", "vp_ops"],
+    "key_points": [
+      "Respect the timing — no pushiness",
+      "Most clients start with single test project",
+      "Competition models are common entry point",
+      "Offer to send portfolio for future reference"
+    ]
+  },
+  {
+    "type": "objection_handling",
+    "objection": "quality_concerns",
+    "response_strategy": "Lead with proof: free sample of their actual design. Mention SLA layer height (50 microns), professional finishing process, and QC inspection. Offer references from similar firms.",
+    "effectiveness_score": 0.70,
+    "common_personas": ["design_director"],
+    "key_points": [
+      "Free sample of THEIR design — proof in their hands",
+      "50-micron layer height (SLA) — finer than human hair",
+      "Professional finishing: sanding, priming, painting",
+      "QC inspection on every order"
+    ]
+  },
+  {
+    "type": "objection_handling",
+    "objection": "turnaround_too_slow",
+    "response_strategy": "Guarantee 48-hour standard turnaround. Rush service available for 24-hour. Share examples of competition deadline deliveries. Offer guaranteed delivery date at quote stage.",
+    "effectiveness_score": 0.60,
+    "common_personas": ["design_director", "vp_ops"],
+    "key_points": [
+      "48-hour standard guaranteed turnaround",
+      "24-hour rush for competition deadlines",
+      "Delivery date locked at quote stage",
+      "Express shipping included on rush orders"
+    ]
+  }
+]

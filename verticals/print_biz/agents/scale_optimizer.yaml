@@ -1,0 +1,27 @@
+agent_id: scale_optimizer_v1
+agent_type: scale_optimizer
+name: "Scale Optimizer Agent"
+description: "Ensures architectural models are correctly scaled with proper detail resolution"
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - material_selected
+    - scale_review_requested
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  min_detail_mm: 0.5
+  common_scales: ["1:50", "1:100", "1:200", "1:500"]
+  max_build_plate_mm: {"x": 300, "y": 300, "z": 400}

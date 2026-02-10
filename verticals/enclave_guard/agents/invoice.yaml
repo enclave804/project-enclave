@@ -1,0 +1,55 @@
+# Invoice Agent — Enclave Guard vertical
+#
+# The Billing Engine: creates invoices from accepted proposals,
+# tracks payment status, and dispatches overdue reminders with
+# graduated tone escalation.
+#
+# Pipeline: detect_trigger → generate_invoice → send_to_client →
+#           monitor_payment → chase_overdue → human_review → send → END
+#
+# The Invoice Agent reads from the shared brain:
+#   - Accepted proposals (trigger invoice creation)
+#   - Payment history (client reliability signals)
+#   - Overdue thresholds (tone selection)
+
+agent_id: invoice_v1
+agent_type: invoice
+name: "Invoice Agent"
+description: "Creates invoices from proposals, tracks payments, and sends graduated overdue reminders."
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - proposal_accepted
+    - invoice_requested
+    - payment_overdue
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "Enclave Guard"
+  default_currency: "usd"
+  default_due_days: 30
+  default_description: "Cybersecurity Professional Services"
+
+  overdue_reminder_days:
+    - 7
+    - 14
+    - 30
+
+  reminder_tones:
+    7: "polite"
+    14: "firm"
+    30: "final"
+
+  max_invoice_amount_cents: 10000000  # $100,000.00 safety cap

@@ -1,0 +1,28 @@
+agent_id: quote_engine_v1
+agent_type: quote_engine
+name: "Quote Engine Agent"
+description: "Calculates costs and generates professional print quotes"
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - material_selected
+    - quote_requested
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-sonnet-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.75
+
+params:
+  markup_percent: 30
+  quote_valid_days: 14
+  min_order_cents: 5000
+  rush_multiplier: 1.5

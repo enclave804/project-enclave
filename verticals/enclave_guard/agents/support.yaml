@@ -1,0 +1,27 @@
+agent_id: support_v1
+agent_type: support_agent
+name: "Support Agent"
+description: "Routes support requests, suggests responses from knowledge base"
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - support_ticket_created
+    - client_inquiry_received
+
+model_routing:
+  primary: claude-haiku-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  auto_escalation_keywords: ["urgent", "breach", "down", "critical", "emergency"]
+  response_sla_hours: 4
+  knowledge_search_limit: 5

@@ -1,0 +1,87 @@
+# Security Trainer Agent — Enclave Guard vertical
+#
+# The Coach: generates security awareness training content tailored
+# to the client's specific risk profile. Creates phishing simulations,
+# training modules, and assessment quizzes on a monthly cadence.
+#
+# Pipeline: analyze_risk_profile → select_topics →
+#           generate_phishing_scenarios → generate_training_modules →
+#           create_assessments → compile_training_package →
+#           save_content → END
+#
+# Training modules:
+#   - Phishing recognition (email, SMS, voice)
+#   - Password hygiene and MFA adoption
+#   - Social engineering awareness
+#   - Safe browsing and download practices
+#   - Data classification and handling
+#   - Incident reporting procedures
+#   - Remote work security
+#   - Mobile device security
+#
+# Phishing simulation templates:
+#   - Credential harvesting (fake login pages)
+#   - Business email compromise (CEO fraud)
+#   - Invoice fraud (fake vendor payments)
+#   - IT support impersonation
+#   - Urgency-based attacks
+
+agent_id: security_trainer_v1
+agent_type: security_trainer
+name: "Security Trainer Agent"
+description: >
+  Generates tailored security awareness training content including
+  phishing simulations, training modules, and assessment quizzes.
+  Adapts content to the client's specific risk profile.
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.6  # Higher: creative training content
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: scheduled
+  cron: "0 9 1 * *"  # First day of every month at 9 AM
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Content generation limits
+  max_phishing_scenarios: 5
+  training_modules_per_run: 3
+  quiz_questions_per_module: 10
+
+  # Difficulty levels
+  difficulty_levels:
+    - beginner
+    - intermediate
+    - advanced
+
+  # Training topic priorities (ordered)
+  default_topics:
+    - "phishing_recognition"
+    - "password_hygiene"
+    - "social_engineering"
+    - "data_handling"
+    - "incident_reporting"
+    - "remote_work_security"

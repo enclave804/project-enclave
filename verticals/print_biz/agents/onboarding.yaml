@@ -1,0 +1,61 @@
+# Onboarding Agent — PrintBiz vertical
+#
+# The Welcome Wagon: automates client onboarding for 3D printing
+# projects from contract signature through first prototype delivery.
+# Creates milestone checklists tailored to print complexity.
+#
+# Pipeline: detect_contract → create_onboarding_plan → assign_milestones →
+#           send_welcome → schedule_design_review → human_review → execute → END
+#
+# The Onboarding Agent reads from the shared brain:
+#   - Signed contracts (trigger onboarding flow)
+#   - Project complexity (standard vs enterprise templates)
+#   - Design file requirements (material, resolution)
+
+agent_id: onboarding_v1
+agent_type: onboarding
+name: "PrintBiz Onboarding Agent"
+description: "Automates client onboarding for 3D printing projects from contract through first prototype delivery."
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - contract_signed
+    - client_onboarding_requested
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  default_template: "default"
+  kickoff_delay_days: 2
+
+  milestone_templates:
+    default:
+      - "Send welcome packet with capabilities overview"
+      - "Schedule design review call"
+      - "Collect and validate design files (STL/STEP/OBJ)"
+      - "Material selection consultation"
+      - "First prototype scheduling"
+      - "Delivery logistics confirmation"
+    enterprise:
+      - "Executive sponsor introduction"
+      - "Send welcome packet with dedicated team bios"
+      - "Schedule design review with engineering lead"
+      - "Collect and validate design files (STL/STEP/OBJ)"
+      - "Material selection and testing consultation"
+      - "Prototype iteration plan (3 rounds included)"
+      - "First prototype delivery and quality review"
+      - "Production run scheduling"
+      - "Set up dedicated project portal"
+      - "Schedule 30-day quality review"

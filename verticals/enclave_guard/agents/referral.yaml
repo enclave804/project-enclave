@@ -1,0 +1,46 @@
+# Referral Agent — Enclave Guard vertical
+#
+# The Growth Engine: identifies happy clients (high NPS + completed
+# projects) and nurtures referral requests. Tracks referral
+# conversions and manages commission payouts.
+#
+# Pipeline: identify_promoters → draft_referral_ask → human_review →
+#           send → track_referrals → calculate_commission → report → END
+#
+# Only targets clients with NPS >= 9 and at least 1 completed
+# project to ensure authentic advocacy.
+
+agent_id: referral_v1
+agent_type: referral
+name: "Referral Agent"
+description: "Identifies promoters, nurtures referral requests, and tracks referral conversions with commissions."
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 9 15 * *"  # 15th of every month at 9 AM
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "Enclave Guard"
+  min_nps_score: 9
+  min_projects_completed: 1
+  default_commission_percent: 10.0
+
+  referral_incentive: "10% commission on referred contract value"
+  max_referral_asks_per_client: 2  # Per quarter
+  cooldown_days: 90
+
+  tracking:
+    attribution_window_days: 180
+    commission_payout_trigger: "contract_signed"

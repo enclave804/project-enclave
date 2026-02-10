@@ -1,0 +1,91 @@
+# PrintBiz Proposal / Quote Builder Agent
+# Generates custom quotes with material specs, timeline, and pricing.
+
+agent_id: print_proposal_v1
+agent_type: proposal_builder
+name: "PrintBiz Quote Builder"
+description: >
+  Generates professional 3D printing quotes based on file analysis,
+  material selection, and project requirements. Includes material specs,
+  print time estimates, post-processing options, timeline, and pricing
+  tiers. Designed for architecture firm procurement workflows.
+enabled: true
+
+model:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250514
+  temperature: 0.5
+  max_tokens: 8192
+
+tools:
+  - enrich_company
+  - search_knowledge
+  - save_insight
+  - send_email
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  tagline: "CAD to Reality in 48 Hours"
+  default_delivery_method: email
+  default_proposal_type: project_quote
+  default_pricing_tier: standard
+  pricing:
+    basic:
+      amount: 150.0
+      timeline_days: 5
+      deliverables:
+        - "Single-color FDM print"
+        - "Basic cleanup and support removal"
+        - "Standard packaging"
+    standard:
+      amount: 500.0
+      timeline_days: 3
+      deliverables:
+        - "High-detail SLA/SLS print"
+        - "Professional finishing (sanding, priming)"
+        - "Accurate scale verification"
+        - "Protective packaging"
+    premium:
+      amount: 2000.0
+      timeline_days: 5
+      deliverables:
+        - "Multi-part architectural model"
+        - "Full color and paint finishing"
+        - "Landscaping and context elements"
+        - "Display base with project nameplate"
+        - "Photography of finished model"
+    custom:
+      amount: 0
+      timeline_days: 0
+      deliverables:
+        - "Custom scope based on project requirements"
+  material_options:
+    - name: "PLA (FDM)"
+      best_for: "Quick prototypes, concept models"
+      detail_level: "Medium"
+      price_modifier: 1.0
+    - name: "Resin (SLA)"
+      best_for: "High-detail presentation models"
+      detail_level: "Very High"
+      price_modifier: 2.5
+    - name: "Nylon (SLS)"
+      best_for: "Durable functional prototypes"
+      detail_level: "High"
+      price_modifier: 3.0
+    - name: "Full Color Sandstone"
+      best_for: "Colored presentation models"
+      detail_level: "High"
+      price_modifier: 4.0

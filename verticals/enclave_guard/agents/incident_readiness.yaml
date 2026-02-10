@@ -1,0 +1,91 @@
+# Incident Readiness Agent — Enclave Guard vertical
+#
+# The Fire Marshal: assesses the client's incident response preparedness.
+# Evaluates IR plans, communication procedures, backup strategies,
+# and recovery capabilities against industry benchmarks.
+#
+# Pipeline: review_ir_plan → assess_detection →
+#           assess_communication → assess_containment →
+#           assess_recovery → tabletop_scenarios →
+#           grade_readiness → save_findings → END
+#
+# Assessment categories:
+#   Detection & Monitoring:
+#     - SIEM deployment and coverage
+#     - Alert triage procedures
+#     - Mean time to detect (MTTD) targets
+#
+#   Response Procedures:
+#     - Documented IR playbooks
+#     - Role assignments and escalation paths
+#     - Communication templates (internal + external)
+#
+#   Recovery:
+#     - Backup frequency and testing
+#     - RTO/RPO definitions
+#     - Business continuity plans
+#
+# Grading scale:
+#   A → Mature, tested, well-documented
+#   B → Documented with minor gaps
+#   C → Basic procedures, needs improvement (passing minimum)
+#   D → Significant gaps, high risk
+#   F → No formal IR capability
+
+agent_id: incident_readiness_v1
+agent_type: incident_readiness
+name: "Incident Readiness Agent"
+description: >
+  Assesses incident response preparedness including IR plans, detection
+  capabilities, communication procedures, backup strategies, and
+  recovery targets. Grades readiness from A to F.
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.4  # Slightly creative for scenario generation
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event: assessment_started
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Grading
+  passing_grade: "C"
+  min_readiness_score: 50
+
+  # Benchmark targets
+  target_mttd_hours: 24
+  target_mttr_hours: 72
+  backup_test_frequency_days: 90
+
+  # Tabletop scenario categories
+  scenario_categories:
+    - "ransomware_attack"
+    - "data_breach"
+    - "insider_threat"
+    - "ddos_attack"
+    - "supply_chain_compromise"
+    - "cloud_account_takeover"

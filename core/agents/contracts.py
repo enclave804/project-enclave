@@ -370,3 +370,370 @@ class ClientRecord(BaseModel):
     status: str = "active"  # active, at_risk, churned
     notes: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+# ─── 3D Printing Contracts ────────────────────────────────────────────
+
+
+class PrintJobRequest(BaseModel):
+    """Request to create/process a 3D print job."""
+
+    file_name: str
+    file_url: str = ""
+    file_format: str = "STL"
+    company_name: str = ""
+    contact_email: str = ""
+    use_case: str = ""
+    material_preference: str = ""
+    quantity: int = 1
+    notes: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class GeometryAnalysis(BaseModel):
+    """Output from file analysis — geometry metrics and printability."""
+
+    is_manifold: bool = True
+    is_watertight: bool = True
+    vertex_count: int = 0
+    face_count: int = 0
+    volume_cm3: float = 0.0
+    surface_area_cm2: float = 0.0
+    bounding_box: dict[str, float] = Field(default_factory=dict)
+    issues: list[dict[str, Any]] = Field(default_factory=list)
+    printability_score: float = 0.0
+
+
+class MaterialRecommendation(BaseModel):
+    """Material + technology recommendation from advisor."""
+
+    material: str
+    technology: str
+    cost_per_cm3: float = 0.0
+    layer_height_um: int = 200
+    detail_level: str = "medium"
+    reasoning: str = ""
+    alternatives: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PrintQuote(BaseModel):
+    """Generated quote for a print job."""
+
+    quote_id: str = ""
+    total_cents: int = 0
+    line_items: list[dict[str, Any]] = Field(default_factory=list)
+    estimated_days: int = 5
+    valid_until: str = ""
+    company_name: str = ""
+    contact_email: str = ""
+
+
+# ─── Universal Business Contracts ────────────────────────────────────
+
+
+class ContractRequest(BaseModel):
+    """Request to generate a business contract."""
+
+    contract_type: str = "service_agreement"
+    company_name: str = ""
+    contact_email: str = ""
+    value_cents: int = 0
+    start_date: str = ""
+    duration_months: int = 12
+    custom_terms: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SupportTicketData(BaseModel):
+    """Inbound support ticket data."""
+
+    subject: str
+    description: str = ""
+    contact_email: str = ""
+    company_name: str = ""
+    category: str = "general"
+    priority: str = "medium"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class CompetitorAlert(BaseModel):
+    """Alert from competitive intelligence monitoring."""
+
+    competitor_name: str
+    intel_type: str = "news"
+    title: str = ""
+    content: str = ""
+    source_url: str = ""
+    severity: str = "info"
+    actionable: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+# ─── Phase 21: Universal Business v2 ─────────────────────────────────
+
+
+class OnboardingRequest(BaseModel):
+    """Request to initiate client onboarding."""
+
+    company_name: str
+    contact_email: str
+    contact_name: str = ""
+    opportunity_id: str = ""
+    contract_id: str = ""
+    template_name: str = "default"
+    custom_milestones: list[dict[str, Any]] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class KnowledgeArticleData(BaseModel):
+    """Data for a knowledge base article."""
+
+    title: str
+    body_markdown: str = ""
+    category: str = "general"
+    tags: list[str] = Field(default_factory=list)
+    source_type: str = "manual"
+    source_ticket_id: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class FeedbackSurveyRequest(BaseModel):
+    """Request to send a feedback survey."""
+
+    survey_type: str = "nps"
+    touchpoint: str = "post_project"
+    contact_email: str
+    contact_name: str = ""
+    company_name: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class FeedbackResponseData(BaseModel):
+    """Data from a collected feedback response."""
+
+    contact_email: str
+    survey_type: str = "nps"
+    nps_score: Optional[int] = None
+    csat_score: Optional[int] = None
+    comment: str = ""
+    sentiment: str = "neutral"
+    sentiment_score: float = 0.0
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ReferralData(BaseModel):
+    """Data for a client referral submission."""
+
+    referrer_email: str
+    referrer_name: str = ""
+    referrer_company: str = ""
+    referee_email: str
+    referee_name: str = ""
+    referee_company: str = ""
+    referee_domain: str = ""
+    source: str = "client_referral"
+    notes: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class DealAnalysisData(BaseModel):
+    """Data for a win/loss deal analysis."""
+
+    opportunity_id: str
+    outcome: str = "won"
+    deal_value_cents: int = 0
+    win_loss_factors: list[dict[str, Any]] = Field(default_factory=list)
+    competitor_involved: str = ""
+    sales_cycle_days: int = 0
+    recommendations: list[dict[str, Any]] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class DataQualityIssue(BaseModel):
+    """Data quality issue detected during CRM scan."""
+
+    target_table: str
+    target_id: str = ""
+    target_field: str = ""
+    issue_type: str = "missing"
+    severity: str = "medium"
+    description: str = ""
+    original_value: str = ""
+    suggested_value: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ComplianceRecordData(BaseModel):
+    """Data for a regulatory compliance record."""
+
+    regulation: str = "gdpr"
+    record_type: str = "consent"
+    contact_email: str = ""
+    consent_given: bool = False
+    consent_type: str = ""
+    consent_timestamp: str = ""
+    retention_expiry: str = ""
+    data_categories: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+
+# --- Phase 22: Project Management ----------------------------------------
+
+
+class ProjectData(BaseModel):
+    """Data for a project tracking record."""
+
+    project_id: str = ""
+    project_name: str = ""
+    status: str = "active"  # active, on_track, at_risk, blocked, completed
+    completion_pct: float = 0.0
+    milestones_total: int = 0
+    milestones_completed: int = 0
+    blockers: list[dict[str, Any]] = Field(default_factory=list)
+    health_score: float = 0.0
+    owner: str = ""
+    due_date: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProjectPlanData(BaseModel):
+    """Data for a project plan with phases, timeline, and risks."""
+
+    plan_id: str = ""
+    project_name: str = ""
+    phases: list[dict[str, Any]] = Field(default_factory=list)
+    timeline_weeks: int = 0
+    resources: list[dict[str, Any]] = Field(default_factory=list)
+    risks: list[dict[str, Any]] = Field(default_factory=list)
+    total_risk_score: float = 0.0
+    budget_estimate_cents: int = 0
+    objectives: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+
+# ─── Brand Monitoring ─────────────────────────────────────────────────
+
+class BrandMentionData(BaseModel):
+    """Data for a brand mention detected across platforms."""
+
+    platform: str = ""
+    source_url: str = ""
+    author: str = ""
+    mention_text: str = ""
+    sentiment: str = "neutral"
+    sentiment_score: float = 0.0
+    brand_health_score: float = 0.0
+    alert_triggered: bool = False
+    alert_type: str = ""
+    detected_at: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+# ─── Threat Intelligence ─────────────────────────────────────────────
+
+class ThreatIntelData(BaseModel):
+    """Data for a threat intelligence finding."""
+
+    threat_type: str = ""
+    severity: str = "medium"
+    severity_score: float = 0.0
+    cve_id: str = ""
+    ioc_indicators: list[str] = Field(default_factory=list)
+    affected_systems: list[str] = Field(default_factory=list)
+    mitigation: str = ""
+    source_feed: str = ""
+    detected_at: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+
+# ─── Phase 22: Universal + Creative ──────────────────────────────────
+
+
+class ProjectData(BaseModel):
+    """Data for a tracked project."""
+
+    project_name: str
+    status: str = "not_started"
+    priority: str = "medium"
+    tasks: list[dict[str, Any]] = Field(default_factory=list)
+    milestones: list[dict[str, Any]] = Field(default_factory=list)
+    assigned_to: str = ""
+    due_date: str = ""
+    completion_pct: float = 0.0
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProjectPlanData(BaseModel):
+    """Data for a project plan."""
+
+    project_name: str
+    scope: str = ""
+    objectives: list[str] = Field(default_factory=list)
+    timeline: list[dict[str, Any]] = Field(default_factory=list)
+    risks: list[dict[str, Any]] = Field(default_factory=list)
+    resources: list[dict[str, Any]] = Field(default_factory=list)
+    budget_estimate_cents: int = 0
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class BrandMentionData(BaseModel):
+    """Data for a brand mention detection."""
+
+    source: str
+    platform: str = ""
+    content_snippet: str = ""
+    sentiment_score: float = 0.0
+    sentiment_label: str = "neutral"
+    author: str = ""
+    mention_url: str = ""
+    detected_at: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ThreatIntelData(BaseModel):
+    """Data for a threat intelligence item."""
+
+    threat_type: str = "vulnerability"
+    severity: str = "medium"
+    source_feed: str = ""
+    cve_id: str = ""
+    cvss_score: float = 0.0
+    ioc_type: str = ""
+    ioc_value: str = ""
+    affected_systems: list[str] = Field(default_factory=list)
+    advisory_text: str = ""
+    mitigation_steps: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class WebDesignBrief(BaseModel):
+    """Data for a web design brief."""
+
+    site_type: str = "landing_page"
+    project_name: str = ""
+    pages: list[dict[str, Any]] = Field(default_factory=list)
+    brand_colors: list[str] = Field(default_factory=list)
+    typography: dict[str, str] = Field(default_factory=dict)
+    target_audience: str = ""
+    content_sections: list[dict[str, Any]] = Field(default_factory=list)
+    responsive: bool = True
+    framework: str = "html5"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphicDesignBrief(BaseModel):
+    """Data for a graphic design brief."""
+
+    asset_type: str = "logo"
+    project_name: str = ""
+    dimensions: str = ""
+    brand_colors: list[str] = Field(default_factory=list)
+    style_guide: dict[str, Any] = Field(default_factory=dict)
+    text_content: str = ""
+    usage_context: str = ""
+    file_formats: list[str] = Field(default_factory=lambda: ["png"])
+    metadata: dict[str, Any] = Field(default_factory=dict)

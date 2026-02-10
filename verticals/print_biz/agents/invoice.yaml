@@ -1,0 +1,61 @@
+# Invoice Agent — PrintBiz vertical
+#
+# The Billing Engine: creates invoices for 3D printing jobs,
+# tracks payment status, and dispatches overdue reminders.
+# Supports per-job billing and milestone-based billing for
+# larger production runs.
+#
+# Pipeline: detect_trigger → generate_invoice → send_to_client →
+#           monitor_payment → chase_overdue → human_review → send → END
+#
+# The Invoice Agent reads from the shared brain:
+#   - Completed print jobs (trigger per-job invoicing)
+#   - Project milestones (trigger milestone billing)
+#   - Material costs and machine time (line item calculation)
+
+agent_id: invoice_v1
+agent_type: invoice
+name: "PrintBiz Invoice Agent"
+description: "Creates invoices for print jobs, tracks payments, and sends graduated overdue reminders."
+version: "1.0.0"
+
+trigger:
+  type: event
+  events:
+    - proposal_accepted
+    - invoice_requested
+    - payment_overdue
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+  default_currency: "usd"
+  default_due_days: 15
+  default_description: "3D Printing Services"
+
+  overdue_reminder_days:
+    - 5
+    - 10
+    - 21
+
+  reminder_tones:
+    5: "polite"
+    10: "firm"
+    21: "final"
+
+  max_invoice_amount_cents: 5000000  # $50,000.00 safety cap
+
+  payment_terms:
+    standard: "Net 15 — payment due within 15 days of delivery"
+    large_project: "50% upfront, 50% on delivery"
+    enterprise: "Net 30 — for clients with 3+ previous orders"

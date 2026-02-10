@@ -1,0 +1,67 @@
+# Compliance Agent — PrintBiz vertical
+#
+# The Watchdog: audits outreach data for regulatory compliance,
+# checks consent records, and monitors data retention policies.
+# Includes product liability awareness for physical goods.
+#
+# Pipeline: audit_consent_records → check_retention → validate_opt_outs →
+#           scan_outreach_logs → check_product_liability → generate_report →
+#           human_review → END
+#
+# Covers GDPR, CAN-SPAM, CCPA, and product liability regulations
+# relevant to manufactured physical goods. Auto-purge is disabled
+# by default — human must approve data deletion.
+
+agent_id: compliance_v1
+agent_type: compliance
+name: "PrintBiz Compliance Agent"
+description: "Audits outreach for GDPR/CAN-SPAM/CCPA compliance and product liability for manufactured goods."
+version: "1.0.0"
+
+trigger:
+  type: scheduled
+  schedule: "0 7 1 * *"  # 1st of every month at 7 AM
+
+model_routing:
+  primary: claude-sonnet-4-5-20250514
+  analysis: claude-haiku-4-5-20250514
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+rag_write_confidence_threshold: 0.7
+
+params:
+  company_name: "PrintBiz"
+
+  active_regulations:
+    - "gdpr"
+    - "can_spam"
+    - "ccpa"
+
+  retention_check_days: 30
+  consent_audit_enabled: true
+  auto_purge: false
+
+  product_liability:
+    enabled: true
+    material_safety_data_required: true
+    design_disclaimer_required: true
+    quality_certification_tracking: true
+
+  audit_scope:
+    - "outreach_logs"
+    - "contact_consent"
+    - "unsubscribe_records"
+    - "data_processing_agreements"
+    - "product_liability_disclaimers"
+    - "material_safety_records"
+
+  alert_on_violation: true
+  violation_severity_levels:
+    critical: "immediate_escalation"
+    high: "next_business_day"
+    medium: "weekly_report"
+    low: "monthly_report"

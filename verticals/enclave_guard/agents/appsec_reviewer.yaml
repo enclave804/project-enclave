@@ -1,0 +1,83 @@
+# Application Security Reviewer Agent — Enclave Guard vertical
+#
+# The Web Inspector: analyzes client web applications for security
+# misconfigurations, missing headers, weak TLS, and OWASP Top 10
+# issues detectable from external observation.
+#
+# Pipeline: discover_endpoints → header_analysis → tls_check →
+#           cookie_audit → cors_review → csp_analysis →
+#           classify_findings → save_findings → END
+#
+# Non-intrusive only: no active exploitation, fuzzing, or injection.
+# Analyzes publicly observable behavior of web applications.
+#
+# Coverage areas:
+#   - HTTP security headers (CSP, HSTS, X-Frame-Options, etc.)
+#   - TLS configuration (protocol versions, cipher suites)
+#   - Cookie security flags (Secure, HttpOnly, SameSite)
+#   - CORS policy assessment
+#   - Content Security Policy analysis
+#   - OWASP Top 10 external indicators
+
+agent_id: appsec_reviewer_v1
+agent_type: appsec_reviewer
+name: "Application Security Reviewer Agent"
+description: >
+  Analyzes web applications for security misconfigurations, missing
+  headers, weak TLS, and OWASP Top 10 indicators through non-intrusive
+  external observation. No active exploitation or fuzzing.
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.3  # Low: precise security analysis
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+  - scan_security_headers
+  - check_cors_policy
+  - analyze_cookie_security
+  - check_csp_policy
+  - scan_ssl_certificate
+  - check_ssl_protocols
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event: new_client_onboarded
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # OWASP reference version
+  owasp_version: "2021"
+
+  # Header checks
+  check_all_headers: true
+  required_headers:
+    - "Strict-Transport-Security"
+    - "Content-Security-Policy"
+    - "X-Content-Type-Options"
+    - "X-Frame-Options"
+    - "Referrer-Policy"
+    - "Permissions-Policy"
+
+  # URL scanning limits
+  max_urls: 20
+  request_timeout_seconds: 15

@@ -1,0 +1,106 @@
+[
+  {
+    "type": "material_knowledge",
+    "material": "PLA (FDM)",
+    "technology": "FDM",
+    "description": "Polylactic acid — the workhorse of 3D printing. Biodegradable thermoplastic ideal for quick concept models and study maquettes.",
+    "best_for": [
+      "Quick concept models",
+      "Study maquettes",
+      "Internal design reviews",
+      "Iterative prototypes"
+    ],
+    "limitations": [
+      "Visible layer lines at standard resolution",
+      "Limited detail on small features",
+      "Warps in direct sunlight/heat",
+      "Single color per part (without painting)"
+    ],
+    "detail_level": "Medium",
+    "min_wall_thickness_mm": 1.2,
+    "min_feature_size_mm": 0.8,
+    "max_build_volume_mm": [300, 300, 400],
+    "typical_layer_height_um": 200,
+    "price_per_cm3_usd": 0.08,
+    "typical_turnaround_hours": 24,
+    "finish_options": ["Raw", "Sanded", "Primed", "Painted"]
+  },
+  {
+    "type": "material_knowledge",
+    "material": "Standard Resin (SLA)",
+    "technology": "SLA",
+    "description": "Photopolymer resin cured by UV laser. The gold standard for architectural presentation models — exceptional detail and smooth surfaces.",
+    "best_for": [
+      "Client presentation models",
+      "Competition submissions",
+      "Detailed facade studies",
+      "Investor meeting props"
+    ],
+    "limitations": [
+      "Brittle — handle with care",
+      "UV sensitive (yellows in direct sunlight over time)",
+      "Smaller build volume than FDM",
+      "Higher cost than FDM"
+    ],
+    "detail_level": "Very High",
+    "min_wall_thickness_mm": 0.5,
+    "min_feature_size_mm": 0.2,
+    "max_build_volume_mm": [192, 120, 245],
+    "typical_layer_height_um": 50,
+    "price_per_cm3_usd": 0.20,
+    "typical_turnaround_hours": 36,
+    "finish_options": ["Raw", "Sanded", "Primed", "Painted", "Clear Coated"]
+  },
+  {
+    "type": "material_knowledge",
+    "material": "Nylon PA12 (SLS)",
+    "technology": "SLS",
+    "description": "Selective laser sintering with nylon powder. Strong, durable, and flexible — ideal for functional prototypes and structural models.",
+    "best_for": [
+      "Structural detail models",
+      "Durable display models",
+      "Models that need to survive transport",
+      "Snap-fit assemblies"
+    ],
+    "limitations": [
+      "Slightly grainy surface texture",
+      "Natural color is off-white/grey",
+      "Requires dyeing for color",
+      "Higher cost per cm3"
+    ],
+    "detail_level": "High",
+    "min_wall_thickness_mm": 0.7,
+    "min_feature_size_mm": 0.3,
+    "max_build_volume_mm": [380, 284, 380],
+    "typical_layer_height_um": 100,
+    "price_per_cm3_usd": 0.35,
+    "typical_turnaround_hours": 48,
+    "finish_options": ["Raw", "Dyed", "Smoothed", "Painted"]
+  },
+  {
+    "type": "material_knowledge",
+    "material": "Full Color Sandstone",
+    "technology": "Binder Jetting",
+    "description": "Gypsum powder with full-color inkjet printing. Creates photorealistic colored models directly from textured 3D files.",
+    "best_for": [
+      "Colored site models with landscaping",
+      "Urban planning presentations",
+      "Real estate marketing models",
+      "Topographic terrain models"
+    ],
+    "limitations": [
+      "Fragile — not for handling",
+      "Grainy surface texture",
+      "Requires reinforcement coating",
+      "Limited structural strength"
+    ],
+    "detail_level": "High",
+    "min_wall_thickness_mm": 2.0,
+    "min_feature_size_mm": 1.0,
+    "max_build_volume_mm": [254, 381, 203],
+    "typical_layer_height_um": 100,
+    "price_per_cm3_usd": 0.45,
+    "typical_turnaround_hours": 72,
+    "finish_options": ["Clear Coat", "Super Glue Infiltration", "Display Case Recommended"]
+  }
+]

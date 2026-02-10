@@ -1,0 +1,82 @@
+# Vulnerability Scanner Agent — Enclave Guard vertical
+#
+# The Recon Specialist: performs automated vulnerability discovery
+# when a new client is onboarded. Scans public-facing infrastructure
+# for open ports, outdated services, and known CVEs.
+#
+# Pipeline: enumerate_targets → port_scan → service_fingerprint →
+#           cve_lookup → classify_severity → save_findings → END
+#
+# Data sources (public data only):
+#   - Shodan API for host discovery
+#   - NVD/CVE databases for vulnerability matching
+#   - SSL Labs for certificate analysis
+#   - DNS enumeration for attack surface mapping
+#
+# Severity classification (CVSS v3.1):
+#   Critical  → 9.0-10.0
+#   High      → 7.0-8.9
+#   Medium    → 4.0-6.9
+#   Low       → 0.1-3.9
+#   Info      → 0.0
+
+agent_id: vuln_scanner_v1
+agent_type: vuln_scanner
+name: "Vulnerability Scanner Agent"
+description: >
+  Performs automated vulnerability discovery on client-facing infrastructure.
+  Scans for open ports, outdated services, misconfigurations, and known CVEs
+  using public data sources (Shodan, NVD, SSL Labs).
+enabled: true
+
+model:
+  provider: anthropic
+  model: "claude-sonnet-4-5-20250514"
+  temperature: 0.3  # Low: precise, deterministic analysis
+  max_tokens: 4096
+
+tools:
+  - search_knowledge
+  - save_insight
+  - scan_ssl_certificate
+  - check_ssl_protocols
+  - get_ssl_grade
+  - scan_security_headers
+  - enumerate_dns_records
+
+browser_enabled: false
+
+human_gates:
+  enabled: true
+  gate_before:
+    - human_review
+
+schedule:
+  trigger: event
+  event: new_client_onboarded
+
+system_prompt_path: ""
+
+# Safety & cost control
+max_consecutive_errors: 5
+rag_write_confidence_threshold: 0.7
+
+# Agent-specific params
+params:
+  company_name: "Enclave Guard"
+
+  # Scan configuration
+  scan_timeout_seconds: 300
+  max_ports: 1000
+  default_scan_type: full
+
+  # Rate limiting for external APIs
+  shodan_rate_limit_per_minute: 10
+  nvd_rate_limit_per_minute: 30
+
+  # Severity thresholds for reporting
+  severity_thresholds:
+    critical: 9.0
+    high: 7.0
+    medium: 4.0
+    low: 0.1
